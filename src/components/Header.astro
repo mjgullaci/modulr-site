@@ -1,0 +1,27 @@
+---
+import settings from '../data/settings.json';
+const s = settings.streaming;
+const so = settings.social;
+---
+<header id="siteHeader" class="t-dark" data-theme="dark" data-screen-label="Header">
+  <a class="wm" href="#top">MODULR</a>
+  <nav>
+    <a class="tlink" href="#music">Music</a>
+    <a class="tlink" href="#shows">Shows</a>
+    <a class="tlink" href="#store">Store</a>
+    <a class="tlink" href="#about">About</a>
+    <a class="tlink" href="#contact">Contact</a>
+  </nav>
+  <div class="icons only-d">
+    <a href={s.spotify} title="Spotify" aria-label="Spotify" target="_blank" rel="noopener"><svg><use href="#i-spotify"></use></svg></a>
+    <a href={s.apple} title="Apple Music" aria-label="Apple Music" target="_blank" rel="noopener"><svg><use href="#i-apple"></use></svg></a>
+    <a href={s.youtube} title="YouTube" aria-label="YouTube" target="_blank" rel="noopener"><svg><use href="#i-youtube"></use></svg></a>
+    <a href={so.instagram} title="Instagram" aria-label="Instagram" target="_blank" rel="noopener"><svg><use href="#i-instagram"></use></svg></a>
+    <a href={so.tiktok} title="TikTok" aria-label="TikTok" target="_blank" rel="noopener"><svg><use href="#i-tiktok"></use></svg></a>
+  </div>
+  <div class="icons only-m" style="margin-left: auto;">
+    <a href={s.spotify} title="Spotify" aria-label="Spotify" target="_blank" rel="noopener"><svg><use href="#i-spotify"></use></svg></a>
+    <a href={so.instagram} title="Instagram" aria-label="Instagram" target="_blank" rel="noopener"><svg><use href="#i-instagram"></use></svg></a>
+  </div>
+  <button class="burger only-m" id="burger" type="button" aria-label="Menu"><i></i><i></i></button>
+</header>

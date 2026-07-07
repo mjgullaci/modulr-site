@@ -1,0 +1,8 @@
+---
+import hero from '../data/hero.json';
+const seg = `${hero.releaseTitle} — <em>Out Now</em> — `;
+const line = seg.repeat(3);
+---
+<div class="marquee t-light" data-theme="light" aria-hidden="true" data-screen-label="Marquee">
+  <p class="marquee-line"><span class="mq" set:html={line}></span><span class="mq" set:html={line}></span></p>
+</div>

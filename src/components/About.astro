@@ -1,0 +1,12 @@
+---
+import about from '../data/about.json';
+---
+<section class="sec t-dark" id="about" data-theme="dark" data-screen-label="About">
+  <div class="wrap about-grid">
+    <img class="about-photo" src={about.photo} alt="Modulr" />
+    <div class="bio">
+      <h2 class="sec-title">About</h2>
+      {about.paragraphs.map((p) => <p>{p}</p>)}
+    </div>
+  </div>
+</section>

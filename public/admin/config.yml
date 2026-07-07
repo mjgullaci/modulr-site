@@ -1,0 +1,143 @@
+# ============================================================
+# Modulr — band content editor (Decap CMS)
+# Draft -> Preview -> Publish. Everything below is band-editable.
+# repo + base_url get filled in when we publish (GitHub + Cloudflare).
+# ============================================================
+
+backend:
+  name: github
+  repo: OWNER/REPO          # <-- set at publish time (band's GitHub)
+  branch: main
+  # base_url: https://<oauth-worker>   # Cloudflare OAuth proxy, set at publish
+
+local_backend: true          # lets a developer preview the editor locally
+publish_mode: editorial_workflow   # draft -> preview link -> publish
+
+media_folder: "public/uploads"     # where uploaded images are stored in the repo
+public_folder: "/uploads"          # how they're referenced on the live site
+
+site_url: https://modulr.net
+display_url: https://modulr.net
+
+collections:
+  # ---------- Site settings ----------
+  - name: settings
+    label: "Site Settings"
+    delete: false
+    editor: { preview: false }
+    files:
+      - name: links
+        label: "Links, Booking & SEO"
+        file: "src/data/settings.json"
+        fields:
+          - { name: bandName, label: "Band name", widget: string }
+          - { name: booking, label: "Booking email", widget: string }
+          - name: streaming
+            label: "Streaming links"
+            widget: object
+            fields:
+              - { name: spotify, label: Spotify, widget: string, required: false }
+              - { name: apple, label: "Apple Music", widget: string, required: false }
+              - { name: youtube, label: YouTube, widget: string, required: false }
+              - { name: soundcloud, label: SoundCloud, widget: string, required: false }
+              - { name: bandcamp, label: Bandcamp, widget: string, required: false }
+          - name: social
+            label: "Social links"
+            widget: object
+            fields:
+              - { name: instagram, label: Instagram, widget: string, required: false }
+              - { name: tiktok, label: TikTok, widget: string, required: false }
+              - { name: facebook, label: Facebook, widget: string, required: false }
+              - { name: x, label: "X (Twitter)", widget: string, required: false }
+          - name: seo
+            label: "Search / social preview"
+            widget: object
+            fields:
+              - { name: title, label: "Page title", widget: string }
+              - { name: description, label: "Description", widget: text }
+              - { name: ogImage, label: "Share image", widget: image, required: false }
+
+  # ---------- Hero / current release ----------
+  - name: hero
+    label: "Hero (Current Release)"
+    delete: false
+    files:
+      - name: hero
+        label: "Hero"
+        file: "src/data/hero.json"
+        fields:
+          - { name: eyebrow, label: "Small line above title", widget: string }
+          - { name: releaseTitle, label: "Release title", widget: string }
+          - { name: artwork, label: "Release artwork", widget: image, required: false }
+          - { name: streamBuyUrl, label: "Stream / Buy link", widget: string, required: false }
+
+  # ---------- About ----------
+  - name: about
+    label: "About"
+    delete: false
+    files:
+      - name: about
+        label: "About"
+        file: "src/data/about.json"
+        fields:
+          - { name: photo, label: "Band photo", widget: image, required: false }
+          - name: paragraphs
+            label: "Bio paragraphs"
+            widget: list
+            field: { name: text, label: "Paragraph", widget: text }
+
+  # ---------- Music ----------
+  - name: releases
+    label: "Music"
+    label_singular: "Release"
+    folder: "src/content/releases"
+    extension: json
+    format: json
+    create: true
+    identifier_field: title
+    slug: "{{fields.order}}-{{slug}}"
+    sortable_fields: [order, year]
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: kind, label: Type, widget: select, options: ["EP", "Single", "Album"], default: "Single" }
+      - { name: year, label: Year, widget: number, value_type: int }
+      - { name: order, label: "Order (1 = shown first)", widget: number, value_type: int, default: 1 }
+      - { name: artwork, label: Artwork, widget: image, required: false }
+      - { name: spotify, label: "Spotify link", widget: string, required: false }
+      - { name: apple, label: "Apple link", widget: string, required: false }
+      - { name: bandcamp, label: "Bandcamp link", widget: string, required: false }
+
+  # ---------- Shows ----------
+  - name: shows
+    label: "Shows"
+    label_singular: "Show"
+    folder: "src/content/shows"
+    extension: json
+    format: json
+    create: true
+    identifier_field: venue
+    slug: "{{fields.date}}-{{slug}}"
+    sortable_fields: [date]
+    fields:
+      - { name: date, label: Date, widget: date, format: "YYYY-MM-DD", picker_utc: true }
+      - { name: venue, label: Venue, widget: string }
+      - { name: city, label: "City, Country", widget: string }
+      - { name: ticketUrl, label: "Ticket link", widget: string, required: false }
+
+  # ---------- Store (teaser cards) ----------
+  - name: products
+    label: "Store"
+    label_singular: "Product"
+    folder: "src/content/products"
+    extension: json
+    format: json
+    create: true
+    identifier_field: name
+    slug: "{{fields.order}}-{{slug}}"
+    sortable_fields: [order]
+    fields:
+      - { name: name, label: Name, widget: string }
+      - { name: price, label: "Price (e.g. £24)", widget: string }
+      - { name: image, label: "Product image", widget: image, required: false }
+      - { name: shopUrl, label: "Shop / buy link", widget: string, required: false }
+      - { name: order, label: "Order", widget: number, value_type: int, default: 1 }

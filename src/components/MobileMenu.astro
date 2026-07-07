@@ -1,0 +1,25 @@
+---
+import settings from '../data/settings.json';
+const s = settings.streaming;
+const so = settings.social;
+---
+<div id="menu" data-screen-label="Mobile Menu">
+  <a class="menu-link" href="#music">Music</a>
+  <a class="menu-link" href="#shows">Shows</a>
+  <a class="menu-link" href="#store">Store</a>
+  <a class="menu-link" href="#about">About</a>
+  <a class="menu-link" href="#contact">Contact</a>
+  <div class="menu-streams">
+    <a class="tlink" href={s.spotify} target="_blank" rel="noopener">Spotify</a>
+    <a class="tlink" href={s.apple} target="_blank" rel="noopener">Apple Music</a>
+    <a class="tlink" href={s.youtube} target="_blank" rel="noopener">YouTube</a>
+    <a class="tlink" href={s.soundcloud} target="_blank" rel="noopener">SoundCloud</a>
+    <a class="tlink" href={s.bandcamp} target="_blank" rel="noopener">Bandcamp</a>
+  </div>
+  <div class="icons">
+    <a href={so.instagram} title="Instagram" aria-label="Instagram" target="_blank" rel="noopener"><svg><use href="#i-instagram"></use></svg></a>
+    <a href={so.tiktok} title="TikTok" aria-label="TikTok" target="_blank" rel="noopener"><svg><use href="#i-tiktok"></use></svg></a>
+    <a href={so.facebook} title="Facebook" aria-label="Facebook" target="_blank" rel="noopener"><svg><use href="#i-facebook"></use></svg></a>
+    <a href={so.x} title="X" aria-label="X" target="_blank" rel="noopener"><svg><use href="#i-x"></use></svg></a>
+  </div>
+</div>

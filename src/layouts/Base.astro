@@ -1,0 +1,107 @@
+---
+import '../styles/global.css';
+import Icons from '../components/Icons.astro';
+import Loader from '../components/Loader.astro';
+import Header from '../components/Header.astro';
+import MobileMenu from '../components/MobileMenu.astro';
+import Footer from '../components/Footer.astro';
+import settings from '../data/settings.json';
+const seo = settings.seo;
+const { title = seo.title, description = seo.description } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content={seo.ogImage} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <Icons />
+  <Loader />
+  <Header />
+  <MobileMenu />
+  <main id="top">
+    <slot />
+  </main>
+  <Footer />
+
+  <script is:inline>
+    (function () {
+      // §01 loader: play once, fade to page
+      var loader = document.getElementById('loader');
+      var vid = document.getElementById('loaderVid');
+      var closed = false;
+      function closeLoader() {
+        if (closed) return;
+        closed = true;
+        loader.classList.add('is-done');
+        setTimeout(function () { loader.remove(); }, 900);
+      }
+      if (loader && vid) {
+        vid.addEventListener('ended', closeLoader);
+        vid.addEventListener('error', closeLoader);
+        loader.addEventListener('click', closeLoader);
+        setTimeout(closeLoader, 8000);
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          setTimeout(closeLoader, 500);
+        }
+        var p = vid.play && vid.play();
+        if (p && p.catch) p.catch(function () { setTimeout(closeLoader, 1200); });
+      }
+
+      // §02 header: invert to match the section behind it
+      var header = document.getElementById('siteHeader');
+      var themed = document.querySelectorAll('main [data-theme], footer[data-theme]');
+      function syncHeader() {
+        if (!header) return;
+        var probe = header.offsetHeight - 1;
+        var current = 'dark';
+        for (var i = 0; i < themed.length; i++) {
+          var r = themed[i].getBoundingClientRect();
+          if (r.top <= probe && r.bottom > probe) { current = themed[i].getAttribute('data-theme'); break; }
+        }
+        header.classList.toggle('t-dark', current === 'dark');
+        header.classList.toggle('t-light', current === 'light');
+      }
+      document.addEventListener('scroll', syncHeader, { passive: true });
+      window.addEventListener('resize', syncHeader);
+      syncHeader();
+
+      // mobile menu
+      var burger = document.getElementById('burger');
+      var menu = document.getElementById('menu');
+      function setMenu(open) {
+        menu.classList.toggle('open', open);
+        document.body.classList.toggle('menu-open', open);
+      }
+      if (burger && menu) {
+        burger.addEventListener('click', function () {
+          setMenu(!menu.classList.contains('open'));
+        });
+        menu.querySelectorAll('a').forEach(function (a) {
+          a.addEventListener('click', function () { setMenu(false); });
+        });
+      }
+
+      // §09 signup
+      var form = document.getElementById('signupForm');
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          form.classList.add('sent');
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

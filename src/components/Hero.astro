@@ -1,0 +1,13 @@
+---
+import hero from '../data/hero.json';
+---
+<section class="hero t-dark" data-theme="dark" data-screen-label="Hero">
+  <p class="eyebrow">{hero.eyebrow}</p>
+  <div class="hero-art">
+    {hero.artwork
+      ? <img src={hero.artwork} alt={hero.releaseTitle + ' artwork'} />
+      : <span class="slot-ph">Release artwork</span>}
+  </div>
+  <h1>{hero.releaseTitle}</h1>
+  <a class="btn btn-hero" href={hero.streamBuyUrl} target="_blank" rel="noopener">Stream / Buy</a>
+</section>

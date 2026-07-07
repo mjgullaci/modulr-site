@@ -1,0 +1,22 @@
+{
+  "bandName": "Modulr",
+  "booking": "booking@modulr.net",
+  "streaming": {
+    "spotify": "#",
+    "apple": "#",
+    "youtube": "#",
+    "soundcloud": "#",
+    "bandcamp": "#"
+  },
+  "social": {
+    "instagram": "#",
+    "tiktok": "#",
+    "facebook": "#",
+    "x": "#"
+  },
+  "seo": {
+    "title": "Modulr — Voltage Out Now",
+    "description": "Modulr — electronic duo. New EP Voltage out now. Music, tour dates and store.",
+    "ogImage": "/uploads/about.jpg"
+  }
+}

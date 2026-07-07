@@ -1,0 +1,20 @@
+---
+const mods = import.meta.glob('../content/products/*.json', { eager: true });
+const products = Object.values(mods).map((m) => m.default).sort((a, b) => (a.order || 99) - (b.order || 99));
+---
+<section class="sec t-light" id="store" data-theme="light" data-screen-label="Store">
+  <div class="wrap">
+    <h2 class="sec-title">Store</h2>
+    <div class="store-grid">
+      {products.map((p) => (
+        <article class="product">
+          <div class="prod-art">
+            {p.image ? <img src={p.image} alt={p.name} /> : <span class="slot-ph">Product</span>}
+          </div>
+          <div class="prod-row"><h3>{p.name}</h3><span class="price">{p.price}</span></div>
+          <a class="btn btn-sm" href={p.shopUrl} target="_blank" rel="noopener">Shop</a>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
