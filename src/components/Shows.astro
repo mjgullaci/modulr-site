@@ -4,9 +4,14 @@ const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV
 const today = new Date(); today.setHours(0, 0, 0, 0);
 const fmt = (d) => { const dt = new Date(d + 'T00:00:00'); return `${String(dt.getDate()).padStart(2,'0')} ${months[dt.getMonth()]} ${dt.getFullYear()}`; };
 const all = Object.values(mods).map((m) => m.default)
-  .map((s) => ({ ...s, dt: new Date(s.date + 'T00:00:00'), label: fmt(s.date) }))
-  .map((s) => ({ ...s, past: s.dt < today }));
-const upcoming = all.filter((s) => !s.past).sort((a, b) => a.dt - b.dt);
+  .map((s) => ({ ...s, dt: s.date ? new Date(s.date + 'T00:00:00') : null, label: s.date ? fmt(s.date) : 'Date TBA', tba: !s.date }))
+  .map((s) => ({ ...s, past: s.dt ? s.dt < today : false }));
+const upcoming = all.filter((s) => !s.past).sort((a, b) => {
+  if (a.tba && b.tba) return 0;
+  if (a.tba) return 1;
+  if (b.tba) return -1;
+  return a.dt - b.dt;
+});
 const past = all.filter((s) => s.past).sort((a, b) => b.dt - a.dt);
 const ordered = [...upcoming, ...past];
 ---
@@ -16,11 +21,16 @@ const ordered = [...upcoming, ...past];
     {ordered.map((s) => (
       <div class={'show-row' + (s.past ? ' show-past' : '')}>
         <span class="show-date">{s.label}</span>
-        <span class="show-venue">{s.venue}</span>
+        <div class="show-venue-cell">
+          <span class="show-venue">{s.venue}</span>
+          {s.doors && <span class="show-doors">Doors {s.doors}</span>}
+        </div>
         <span class="show-city">{s.city}</span>
         {s.past
           ? <span class="show-played">Played</span>
-          : <button class="btn btn-sm ticket-btn" type="button" data-venue={s.venue} data-city={s.city} data-date={s.label} data-amount={s.price || ''} data-url={s.ticketUrl || '#'}>Get Tickets</button>}
+          : s.tba
+            ? <span class="show-soon">Coming soon</span>
+            : <button class="btn btn-sm ticket-btn" type="button" data-venue={s.venue} data-city={s.city} data-date={s.label} data-amount={s.price || ''} data-url={s.ticketUrl || '#'}>Get Tickets</button>}
       </div>
     ))}
   </div>
