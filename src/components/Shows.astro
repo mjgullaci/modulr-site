@@ -20,7 +20,7 @@ const ordered = [...upcoming, ...past];
         <span class="show-city">{s.city}</span>
         {s.past
           ? <span class="show-played">Played</span>
-          : <button class="btn btn-sm ticket-btn" type="button" data-venue={s.venue} data-city={s.city} data-date={s.label} data-url={s.ticketUrl || '#'}>Get Tickets</button>}
+          : <button class="btn btn-sm ticket-btn" type="button" data-venue={s.venue} data-city={s.city} data-date={s.label} data-amount={s.price || ''} data-url={s.ticketUrl || '#'}>Get Tickets</button>}
       </div>
     ))}
   </div>

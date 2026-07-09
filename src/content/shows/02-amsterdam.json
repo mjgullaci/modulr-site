@@ -1,1 +1,7 @@
-{ "date": "2026-10-03", "venue": "Paradiso", "city": "Amsterdam, NL", "ticketUrl": "#" }
+{
+  "date": "2026-10-03",
+  "venue": "Paradiso",
+  "city": "Amsterdam, NL",
+  "ticketUrl": "#",
+  "price": "35.00"
+}

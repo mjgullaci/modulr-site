@@ -560,3 +560,10 @@ body.menu-open { overflow: hidden; }
 .sizes .size:hover { background:#f1f1f1; }
 .sizes .size.sel { background:#0b0b0b; color:#fff; }
 @media (min-width:620px){ .pm-grid { grid-template-columns:1fr 1fr; align-items:start; } }
+
+
+/* square ticket checkout */
+.tk-amount { font:600 15px/1.2 var(--font-brand); letter-spacing:.02em; margin:16px 0 10px; }
+.card-box { min-height:52px; margin-bottom:14px; }
+.tk-status { font:500 13px/1.4 var(--font-brand); margin-top:12px; min-height:18px; }
+.tk-alt { display:inline-block; margin-top:14px; font:600 12px/1 var(--font-brand); letter-spacing:.08em; text-transform:uppercase; text-decoration:underline; color:#0b0b0b; }

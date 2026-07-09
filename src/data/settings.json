@@ -1,7 +1,29 @@
 {
   "bandName": "Modulr",
   "booking": "modulrband@gmail.com",
-  "streaming": { "spotify": "#", "apple": "#", "youtube": "#", "ytmusic": "#", "soundcloud": "#", "bandcamp": "#" },
-  "social": { "instagram": "#", "tiktok": "#", "facebook": "#", "x": "#" },
-  "seo": { "title": "Modulr", "description": "Modulr. Electronic duo. New music out now, plus shows and store.", "ogImage": "/uploads/why.jpg" }
+  "streaming": {
+    "spotify": "#",
+    "apple": "#",
+    "youtube": "#",
+    "ytmusic": "#",
+    "soundcloud": "#",
+    "bandcamp": "#"
+  },
+  "social": {
+    "instagram": "#",
+    "tiktok": "#",
+    "facebook": "#",
+    "x": "#"
+  },
+  "seo": {
+    "title": "Modulr",
+    "description": "Modulr. Electronic duo. New music out now, plus shows and store.",
+    "ogImage": "/uploads/why.jpg"
+  },
+  "square": {
+    "env": "sandbox",
+    "appId": "sandbox-sq0idb-GstXWvv8w-6W5yCdrs0Psw",
+    "locationId": "LQTPXJQWC7EB3",
+    "currency": "AUD"
+  }
 }

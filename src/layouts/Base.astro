@@ -7,6 +7,8 @@ import MobileMenu from '../components/MobileMenu.astro';
 import Footer from '../components/Footer.astro';
 import settings from '../data/settings.json';
 const seo = settings.seo;
+const sq = settings.square || {};
+const sqSdk = sq.env === 'production' ? 'https://web.squarecdn.com/v1/square.js' : 'https://sandbox.web.squarecdn.com/v1/square.js';
 const { title = seo.title, description = seo.description } = Astro.props;
 ---
 <!DOCTYPE html>
@@ -24,6 +26,8 @@ const { title = seo.title, description = seo.description } = Astro.props;
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet" />
+  {sq.appId && <script type="application/json" id="sq-config" set:html={JSON.stringify({ appId: sq.appId, locationId: sq.locationId, currency: sq.currency || 'AUD', env: sq.env || 'sandbox' })}></script>}
+  {sq.appId && <script src={sqSdk} is:inline></script>}
 </head>
 <body>
   <Icons />
@@ -42,9 +46,12 @@ const { title = seo.title, description = seo.description } = Astro.props;
       <p class="modal-eyebrow">Tickets</p>
       <h3 class="modal-title" id="tkVenue">Venue</h3>
       <p class="modal-sub"><span id="tkDate"></span> &middot; <span id="tkCity"></span></p>
-      <p class="modal-note">Secure checkout stays right here on the site. Card, Apple Pay and Google Pay, powered by Square.</p>
-      <div id="tkPay" class="pay-placeholder">Checkout goes live once the band connect their Square account.</div>
-      <a id="tkExternal" class="btn btn-solid modal-cta" href="#" target="_blank" rel="noopener" style="display:none">Tickets via venue</a>
+      <p class="modal-note">Secure checkout stays right here on the site, powered by Square.</p>
+      <p class="tk-amount" id="tkAmount"></p>
+      <div id="card-container" class="card-box"></div>
+      <button id="tkPayBtn" class="btn btn-solid modal-cta" type="button">Pay now</button>
+      <p id="tkStatus" class="tk-status" role="status" aria-live="polite"></p>
+      <a id="tkExternal" class="tk-alt" href="#" target="_blank" rel="noopener" style="display:none">Tickets via venue</a>
     </div>
   </div>
 
@@ -92,14 +99,43 @@ const { title = seo.title, description = seo.description } = Astro.props;
       document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ document.querySelectorAll('.modal.open').forEach(closeModal); } });
 
       var ticketModal=document.getElementById('ticketModal');
+      var sqCfg=null; try{ var cfgEl=document.getElementById('sq-config'); if(cfgEl) sqCfg=JSON.parse(cfgEl.textContent); }catch(e){}
+      var sqPayments=null, sqCard=null, sqReady=false, tkAmt=0, tkLabel='';
+      async function initSquare(){
+        if(sqReady||!sqCfg||!window.Square) return;
+        try{ sqPayments=window.Square.payments(sqCfg.appId, sqCfg.locationId); sqCard=await sqPayments.card(); await sqCard.attach('#card-container'); sqReady=true; }
+        catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; }
+      }
+      function money(n,c){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'AUD'}).format(n); }catch(e){ return (c||'AUD')+' '+n.toFixed(2); } }
       document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
         document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
         document.getElementById('tkDate').textContent=b.getAttribute('data-date')||'';
         document.getElementById('tkCity').textContent=b.getAttribute('data-city')||'';
+        tkLabel=b.getAttribute('data-venue')||'Show';
+        tkAmt=parseFloat(b.getAttribute('data-amount')||'')||0;
+        var amtEl=document.getElementById('tkAmount'), payBtn=document.getElementById('tkPayBtn'), st=document.getElementById('tkStatus'), cardBox=document.getElementById('card-container');
+        var cur=(sqCfg&&sqCfg.currency)||'AUD';
+        st.textContent='';
         var url=b.getAttribute('data-url')||'#', ext=document.getElementById('tkExternal');
         if(url&&url!=='#'){ ext.href=url; ext.style.display=''; } else { ext.style.display='none'; }
         openModal(ticketModal);
+        if(sqCfg && tkAmt>0){ amtEl.textContent=money(tkAmt,cur)+' per ticket'; payBtn.style.display=''; cardBox.style.display=''; payBtn.disabled=false; initSquare(); }
+        else { amtEl.textContent=''; payBtn.style.display='none'; cardBox.style.display='none'; if(!sqCfg) st.textContent='Checkout is being switched on. Use the venue link below for now.'; }
       });});
+      var tkPayBtn=document.getElementById('tkPayBtn');
+      if(tkPayBtn){ tkPayBtn.addEventListener('click',async function(){
+        if(!sqReady||!sqCard) return;
+        var st=document.getElementById('tkStatus'), cur=(sqCfg&&sqCfg.currency)||'AUD';
+        tkPayBtn.disabled=true; st.textContent='Processing...';
+        try{
+          var res=await sqCard.tokenize({ amount:tkAmt.toFixed(2), currencyCode:cur, intent:'CHARGE', customerInitiated:true, sellerKeyedIn:false });
+          if(res.status!=='OK'){ st.textContent='Please check your card details.'; tkPayBtn.disabled=false; return; }
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:cur, note:tkLabel }) });
+          var data=await r.json();
+          if(r.ok&&data.ok){ st.textContent='Payment complete. Your tickets are on the way by email.'; tkPayBtn.style.display='none'; }
+          else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; tkPayBtn.disabled=false; }
+        }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
+      }); }
 
       var productModal=document.getElementById('productModal'), pmBuy=document.getElementById('pmBuy'), pmUrl='#', pmSize=null;
       document.querySelectorAll('.buy-btn').forEach(function(b){ b.addEventListener('click',function(){

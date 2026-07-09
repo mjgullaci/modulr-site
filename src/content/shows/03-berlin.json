@@ -1,1 +1,7 @@
-{ "date": "2026-10-24", "venue": "Gretchen", "city": "Berlin, DE", "ticketUrl": "#" }
+{
+  "date": "2026-10-24",
+  "venue": "Gretchen",
+  "city": "Berlin, DE",
+  "ticketUrl": "#",
+  "price": "35.00"
+}
