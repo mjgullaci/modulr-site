@@ -4,7 +4,7 @@ const titles = data.releases.map((r) => r.title);
 const unit = titles
   .map((t) => `<span class="mq-title">${t}</span><span class="mq-dot">&bull;</span><em>Out Now</em><span class="mq-dot">&bull;</span>`)
   .join('');
-const line = unit.repeat(2);
+const line = unit;
 ---
 <div class="marquee t-light" data-theme="light" aria-hidden="true" data-screen-label="Marquee">
   <p class="marquee-line"><span class="mq" set:html={line}></span><span class="mq" set:html={line}></span></p>
