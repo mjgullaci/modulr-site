@@ -268,9 +268,13 @@ body.menu-open { overflow: hidden; }
 .marquee {
   border-top: 2px solid var(--ink);
   border-bottom: 2px solid var(--ink);
-  overflow: hidden;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  touch-action: pan-y;
+  scrollbar-width: none;
   padding: clamp(14px, 1.8vw, 26px) 0;
 }
+.marquee::-webkit-scrollbar { display: none; }
 .marquee-line {
   display: flex;
   width: max-content;
@@ -279,9 +283,9 @@ body.menu-open { overflow: hidden; }
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: .05em;
-  font-size: clamp(22px, 4vw, 58px);
+  font-size: clamp(30px, 4vw, 58px);
   line-height: 1;
-  animation: mq-scroll 45s linear infinite;
+  animation: none;
 }
 .mq { flex: none; white-space: nowrap; }
 .marquee-line em { font-style: normal; -webkit-text-stroke: 1.5px var(--fg); color: var(--bg); -webkit-text-fill-color: var(--bg); }
@@ -524,7 +528,7 @@ body.menu-open { overflow: hidden; }
 @media (min-width:900px){ .release-grid { grid-template-columns:repeat(3,1fr); gap:30px; align-items:start; } }
 
 /* marquee: faster + crossfading title */
-.marquee-line { animation-duration:15s; }
+/* marquee scroll is JS-driven for iOS stability */
 .mq-dot { margin:0 .5em; }
 
 /* store: frameless (Yeezy style) */
