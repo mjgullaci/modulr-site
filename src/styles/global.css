@@ -284,7 +284,7 @@ body.menu-open { overflow: hidden; }
   animation: mq-scroll 45s linear infinite;
 }
 .mq { flex: none; white-space: nowrap; }
-.marquee-line em { font-style: normal; -webkit-text-stroke: 1.5px var(--fg); color: transparent; }
+.marquee-line em { font-style: normal; -webkit-text-stroke: 1.5px var(--fg); color: var(--bg); -webkit-text-fill-color: var(--bg); }
 @keyframes mq-scroll { to { transform: translate3d(-50%, 0, 0); } }
 @media (prefers-reduced-motion: reduce) {
   .marquee-line { animation: none; }
