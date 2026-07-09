@@ -52,6 +52,11 @@ const { title = seo.title, description = seo.description } = Astro.props;
       <p class="modal-sub"><span id="tkDate"></span> &middot; <span id="tkCity"></span></p>
       <p class="modal-note">Secure checkout stays right here on the site, powered by Square.</p>
       <p class="tk-amount" id="tkAmount"></p>
+      <div class="tk-fields" id="tkFields">
+        <input id="tkFirst" type="text" placeholder="First name" autocomplete="given-name" />
+        <input id="tkLast" type="text" placeholder="Last name" autocomplete="family-name" />
+        <input id="tkEmail" type="email" placeholder="Email" autocomplete="email" />
+      </div>
       <div id="card-container" class="card-box"></div>
       <button id="tkPayBtn" class="btn btn-solid modal-cta" type="button">Pay now</button>
       <p id="tkStatus" class="tk-status" role="status" aria-live="polite"></p>
@@ -123,13 +128,14 @@ const { title = seo.title, description = seo.description } = Astro.props;
       function ensurePayments(){ if(!sqPayments&&sqCfg&&window.Square){ try{ sqPayments=window.Square.payments(sqCfg.appId, sqCfg.locationId); }catch(e){ sqPayments=null; } } return sqPayments; }
       function money(n,c){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'AUD'}).format(n); }catch(e){ return (c||'AUD')+' '+n.toFixed(2); } }
 
-      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='';
+      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='';
       async function initTicketCard(){ if(tkReady) return; var p=ensurePayments(); if(!p) return; try{ tkCard=await p.card(); await tkCard.attach('#card-container'); tkReady=true; }catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; } }
       document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
         document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
         document.getElementById('tkDate').textContent=b.getAttribute('data-date')||'';
         document.getElementById('tkCity').textContent=b.getAttribute('data-city')||'';
         tkLabel=b.getAttribute('data-venue')||'Show';
+        tkVenueVal=tkLabel; tkCityVal=b.getAttribute('data-city')||''; tkDateVal=b.getAttribute('data-date')||''; tkDoorsVal=b.getAttribute('data-doors')||'';
         tkAmt=parseFloat(b.getAttribute('data-amount')||'')||0;
         var amtEl=document.getElementById('tkAmount'), payBtn=document.getElementById('tkPayBtn'), st=document.getElementById('tkStatus'), cardBox=document.getElementById('card-container');
         st.textContent='';
@@ -143,13 +149,17 @@ const { title = seo.title, description = seo.description } = Astro.props;
       if(tkPayBtn){ tkPayBtn.addEventListener('click',async function(){
         if(!tkReady||!tkCard) return;
         var st=document.getElementById('tkStatus');
+        var fn=(document.getElementById('tkFirst').value||'').trim();
+        var ln=(document.getElementById('tkLast').value||'').trim();
+        var em=(document.getElementById('tkEmail').value||'').trim();
+        if(!fn||!ln||em.indexOf('@')<1){ st.textContent='Please add your first name, last name and email.'; return; }
         tkPayBtn.disabled=true; st.textContent='Processing...';
         try{
           var res=await tkCard.tokenize();
           if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; tkPayBtn.disabled=false; return; }
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel }) });
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal } }) });
           var data=await r.json();
-          if(r.ok&&data.ok){ st.textContent='Payment complete. Your tickets are on the way by email.'; tkPayBtn.style.display='none'; }
+          if(r.ok&&data.ok){ st.textContent = data.emailed ? ('Payment complete. Ticket '+data.ticketNo+' emailed to '+em+'.') : ('Payment complete. Ticket '+(data.ticketNo||'')+'.'); tkPayBtn.style.display='none'; }
           else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; tkPayBtn.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
       }); }

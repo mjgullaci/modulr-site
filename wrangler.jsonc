@@ -3,5 +3,5 @@
   "compatibility_date": "2025-06-01",
   "main": "worker/index.js",
   "assets": { "directory": "./dist", "binding": "ASSETS" },
-  "vars": { "SQUARE_ENV": "sandbox", "SQUARE_LOCATION_ID": "LQTPXJQWC7EB3" }
+  "vars": { "SQUARE_ENV": "sandbox", "SQUARE_LOCATION_ID": "LQTPXJQWC7EB3", "TICKET_FROM": "Modulr Tickets <onboarding@resend.dev>" }
 }
