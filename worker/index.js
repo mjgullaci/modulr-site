@@ -5,7 +5,17 @@ export default {
     if (request.method === 'POST' && url.pathname === '/api/pay') {
       return handlePay(request, env);
     }
-    return env.ASSETS.fetch(request);
+    // Serve static assets; tell browsers not to hard-cache HTML so edits show up immediately.
+    const res = await env.ASSETS.fetch(request);
+    try {
+      const ct = res.headers.get('content-type') || '';
+      if (ct.indexOf('text/html') !== -1) {
+        const h = new Headers(res.headers);
+        h.set('Cache-Control', 'no-cache');
+        return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+      }
+    } catch (e) {}
+    return res;
   }
 };
 
