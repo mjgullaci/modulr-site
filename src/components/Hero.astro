@@ -1,13 +1,23 @@
 ---
-import hero from '../data/hero.json';
+import data from '../data/releases.json';
 ---
 <section class="hero t-dark" data-theme="dark" data-screen-label="Hero">
-  <p class="eyebrow">{hero.eyebrow}</p>
-  <div class="hero-art">
-    {hero.artwork
-      ? <img src={hero.artwork} alt={hero.releaseTitle + ' artwork'} />
-      : <span class="slot-ph">Release artwork</span>}
+  <p class="eyebrow">{data.eyebrow}</p>
+  <div class="release-grid">
+    {data.releases.map((r) => (
+      <article class="release">
+        <div class="release-art" style={`--rc:${r.color}`}>
+          {r.artwork
+            ? <img src={r.artwork} alt={r.title + ' cover'} />
+            : <span class="art-ph"><b>MODULR</b><i>{r.title}</i></span>}
+        </div>
+        <div class="stream-icons">
+          <a href={r.spotify} title="Spotify" aria-label={r.title + ' on Spotify'} target="_blank" rel="noopener"><svg><use href="#i-spotify"></use></svg></a>
+          <a href={r.apple} title="Apple Music" aria-label={r.title + ' on Apple Music'} target="_blank" rel="noopener"><svg><use href="#i-apple"></use></svg></a>
+          <a href={r.youtube} title="YouTube" aria-label={r.title + ' on YouTube'} target="_blank" rel="noopener"><svg><use href="#i-youtube"></use></svg></a>
+          <a href={r.ytmusic} title="YouTube Music" aria-label={r.title + ' on YouTube Music'} target="_blank" rel="noopener"><svg><use href="#i-ytmusic"></use></svg></a>
+        </div>
+      </article>
+    ))}
   </div>
-  <h1>{hero.releaseTitle}</h1>
-  <a class="btn btn-hero" href={hero.streamBuyUrl} target="_blank" rel="noopener">Stream / Buy</a>
 </section>

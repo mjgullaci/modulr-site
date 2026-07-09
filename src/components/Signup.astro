@@ -3,12 +3,12 @@ import settings from '../data/settings.json';
 ---
 <section class="sec t-light signup" id="contact" data-theme="light" data-screen-label="Signup">
   <h2 class="sec-title">Sign Up for Updates</h2>
-  <form id="signupForm">
+  <form id="signupForm" data-provider="kit">
     <div class="signup-row">
       <input type="email" required placeholder="Email address" aria-label="Email address" />
       <button class="btn btn-solid" type="submit">Sign Up</button>
     </div>
     <p class="sent-msg">You're on the list.</p>
   </form>
-  <p class="booking-line">Booking — <a href={'mailto:' + settings.booking}>{settings.booking}</a></p>
+  <p class="booking-line">Booking <a href={'mailto:' + settings.booking}>{settings.booking}</a></p>
 </section>

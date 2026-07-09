@@ -35,72 +35,86 @@ const { title = seo.title, description = seo.description } = Astro.props;
   </main>
   <Footer />
 
+  <div class="modal" id="ticketModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Buy tickets">
+      <button class="modal-x" type="button" data-close aria-label="Close">&times;</button>
+      <p class="modal-eyebrow">Tickets</p>
+      <h3 class="modal-title" id="tkVenue">Venue</h3>
+      <p class="modal-sub"><span id="tkDate"></span> &middot; <span id="tkCity"></span></p>
+      <p class="modal-note">Secure checkout stays right here on the site. Card, Apple Pay and Google Pay, powered by Square.</p>
+      <div id="tkPay" class="pay-placeholder">Checkout goes live once the band connect their Square account.</div>
+      <a id="tkExternal" class="btn btn-solid modal-cta" href="#" target="_blank" rel="noopener" style="display:none">Tickets via venue</a>
+    </div>
+  </div>
+
+  <div class="modal" id="productModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Buy product">
+      <button class="modal-x" type="button" data-close aria-label="Close">&times;</button>
+      <div class="pm-grid">
+        <div class="pm-art"><img id="pmImg" src="" alt="" /></div>
+        <div class="pm-info">
+          <h3 class="modal-title" id="pmName">Product</h3>
+          <span class="price" id="pmPrice"></span>
+          <p class="modal-label">Size</p>
+          <div class="sizes" id="pmSizes"></div>
+          <button class="btn btn-solid modal-cta" id="pmBuy" type="button" disabled>Select a size</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script is:inline>
     (function () {
-      // §01 loader: play once, fade to page
-      var loader = document.getElementById('loader');
-      var vid = document.getElementById('loaderVid');
-      var closed = false;
-      function closeLoader() {
-        if (closed) return;
-        closed = true;
-        loader.classList.add('is-done');
-        setTimeout(function () { loader.remove(); }, 900);
-      }
-      if (loader && vid) {
-        vid.addEventListener('ended', closeLoader);
-        vid.addEventListener('error', closeLoader);
-        loader.addEventListener('click', closeLoader);
-        setTimeout(closeLoader, 8000);
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          setTimeout(closeLoader, 500);
-        }
-        var p = vid.play && vid.play();
-        if (p && p.catch) p.catch(function () { setTimeout(closeLoader, 1200); });
-      }
+      var loader=document.getElementById('loader'), vid=document.getElementById('loaderVid'), closed=false;
+      function closeLoader(){ if(closed)return; closed=true; loader.classList.add('is-done'); setTimeout(function(){loader.remove();},900); }
+      if(loader&&vid){ vid.addEventListener('ended',closeLoader); vid.addEventListener('error',closeLoader); loader.addEventListener('click',closeLoader); setTimeout(closeLoader,8000); if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){setTimeout(closeLoader,500);} var p=vid.play&&vid.play(); if(p&&p.catch)p.catch(function(){setTimeout(closeLoader,1200);}); }
 
-      // §02 header: invert to match the section behind it
-      var header = document.getElementById('siteHeader');
-      var themed = document.querySelectorAll('main [data-theme], footer[data-theme]');
-      function syncHeader() {
-        if (!header) return;
-        var probe = header.offsetHeight - 1;
-        var current = 'dark';
-        for (var i = 0; i < themed.length; i++) {
-          var r = themed[i].getBoundingClientRect();
-          if (r.top <= probe && r.bottom > probe) { current = themed[i].getAttribute('data-theme'); break; }
-        }
-        header.classList.toggle('t-dark', current === 'dark');
-        header.classList.toggle('t-light', current === 'light');
-      }
-      document.addEventListener('scroll', syncHeader, { passive: true });
-      window.addEventListener('resize', syncHeader);
-      syncHeader();
+      var header=document.getElementById('siteHeader');
+      var themed=document.querySelectorAll('main [data-theme], footer[data-theme]');
+      function syncHeader(){ if(!header)return; var probe=header.offsetHeight-1, cur='dark'; for(var i=0;i<themed.length;i++){var r=themed[i].getBoundingClientRect(); if(r.top<=probe&&r.bottom>probe){cur=themed[i].getAttribute('data-theme');break;}} header.classList.toggle('t-dark',cur==='dark'); header.classList.toggle('t-light',cur==='light'); }
+      document.addEventListener('scroll',syncHeader,{passive:true}); window.addEventListener('resize',syncHeader); syncHeader();
 
-      // mobile menu
-      var burger = document.getElementById('burger');
-      var menu = document.getElementById('menu');
-      function setMenu(open) {
-        menu.classList.toggle('open', open);
-        document.body.classList.toggle('menu-open', open);
-      }
-      if (burger && menu) {
-        burger.addEventListener('click', function () {
-          setMenu(!menu.classList.contains('open'));
-        });
-        menu.querySelectorAll('a').forEach(function (a) {
-          a.addEventListener('click', function () { setMenu(false); });
-        });
-      }
+      var burger=document.getElementById('burger'), menu=document.getElementById('menu');
+      function setMenu(o){ menu.classList.toggle('open',o); document.body.classList.toggle('menu-open',o); }
+      if(burger&&menu){ burger.addEventListener('click',function(){setMenu(!menu.classList.contains('open'));}); menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){setMenu(false);});}); }
 
-      // §09 signup
-      var form = document.getElementById('signupForm');
-      if (form) {
-        form.addEventListener('submit', function (e) {
-          e.preventDefault();
-          form.classList.add('sent');
-        });
-      }
+      var form=document.getElementById('signupForm');
+      if(form){ form.addEventListener('submit',function(e){ e.preventDefault(); form.classList.add('sent'); }); }
+
+      var mq=document.querySelector('.marquee[data-titles]');
+      if(mq){ var titles=[]; try{titles=JSON.parse(mq.getAttribute('data-titles'));}catch(e){} if(titles.length>1){ var idx=0; setInterval(function(){ idx=(idx+1)%titles.length; var els=mq.querySelectorAll('.mq-title'); els.forEach(function(el){el.style.opacity=0;}); setTimeout(function(){ els.forEach(function(el){el.textContent=titles[idx];el.style.opacity=1;}); },500); },3000); } }
+
+      function openModal(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); document.body.classList.add('menu-open'); }
+      function closeModal(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); document.body.classList.remove('menu-open'); }
+      document.querySelectorAll('.modal [data-close]').forEach(function(el){ el.addEventListener('click',function(){ closeModal(el.closest('.modal')); }); });
+      document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ document.querySelectorAll('.modal.open').forEach(closeModal); } });
+
+      var ticketModal=document.getElementById('ticketModal');
+      document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
+        document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
+        document.getElementById('tkDate').textContent=b.getAttribute('data-date')||'';
+        document.getElementById('tkCity').textContent=b.getAttribute('data-city')||'';
+        var url=b.getAttribute('data-url')||'#', ext=document.getElementById('tkExternal');
+        if(url&&url!=='#'){ ext.href=url; ext.style.display=''; } else { ext.style.display='none'; }
+        openModal(ticketModal);
+      });});
+
+      var productModal=document.getElementById('productModal'), pmBuy=document.getElementById('pmBuy'), pmUrl='#', pmSize=null;
+      document.querySelectorAll('.buy-btn').forEach(function(b){ b.addEventListener('click',function(){
+        document.getElementById('pmName').textContent=b.getAttribute('data-name')||'Product';
+        var price=b.getAttribute('data-price')||''; document.getElementById('pmPrice').textContent=price?price:'Price on request';
+        var img=document.getElementById('pmImg'); img.src=b.getAttribute('data-image')||''; img.alt=b.getAttribute('data-name')||'';
+        pmUrl=b.getAttribute('data-url')||'#'; pmSize=null; pmBuy.disabled=true; pmBuy.textContent='Select a size';
+        var sizes=[]; try{sizes=JSON.parse(b.getAttribute('data-sizes'));}catch(e){sizes=['S','M','L','XL','XXL'];}
+        var box=document.getElementById('pmSizes'); box.innerHTML='';
+        sizes.forEach(function(sz){ var el=document.createElement('button'); el.type='button'; el.className='size'; el.textContent=sz;
+          el.addEventListener('click',function(){ box.querySelectorAll('.size').forEach(function(x){x.classList.remove('sel');}); el.classList.add('sel'); pmSize=sz; pmBuy.disabled=false; pmBuy.textContent='Purchase'; });
+          box.appendChild(el); });
+        openModal(productModal);
+      });});
+      pmBuy.addEventListener('click',function(){ if(!pmSize)return; if(pmUrl&&pmUrl!=='#'){ window.open(pmUrl+(pmUrl.indexOf('?')>-1?'&':'?')+'size='+encodeURIComponent(pmSize),'_blank','noopener'); } else { pmBuy.textContent='Checkout coming soon'; } });
     })();
   </script>
 </body>

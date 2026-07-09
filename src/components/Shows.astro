@@ -3,8 +3,7 @@ const mods = import.meta.glob('../content/shows/*.json', { eager: true });
 const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const today = new Date(); today.setHours(0, 0, 0, 0);
 const fmt = (d) => { const dt = new Date(d + 'T00:00:00'); return `${String(dt.getDate()).padStart(2,'0')} ${months[dt.getMonth()]} ${dt.getFullYear()}`; };
-const all = Object.values(mods)
-  .map((m) => m.default)
+const all = Object.values(mods).map((m) => m.default)
   .map((s) => ({ ...s, dt: new Date(s.date + 'T00:00:00'), label: fmt(s.date) }))
   .map((s) => ({ ...s, past: s.dt < today }));
 const upcoming = all.filter((s) => !s.past).sort((a, b) => a.dt - b.dt);
@@ -21,7 +20,7 @@ const ordered = [...upcoming, ...past];
         <span class="show-city">{s.city}</span>
         {s.past
           ? <span class="show-played">Played</span>
-          : <a class="btn btn-sm" href={s.ticketUrl} target="_blank" rel="noopener">Get Tickets</a>}
+          : <button class="btn btn-sm ticket-btn" type="button" data-venue={s.venue} data-city={s.city} data-date={s.label} data-url={s.ticketUrl || '#'}>Get Tickets</button>}
       </div>
     ))}
   </div>

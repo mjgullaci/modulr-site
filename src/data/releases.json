@@ -1,0 +1,8 @@
+{
+  "eyebrow": "Out Now",
+  "releases": [
+    { "title": "Why", "artwork": "/uploads/why.jpg", "color": "#ff2d2d", "spotify": "#", "apple": "#", "youtube": "#", "ytmusic": "#" },
+    { "title": "Voltage Bloom", "artwork": "/uploads/voltage-bloom.jpg", "color": "#8b5cff", "spotify": "#", "apple": "#", "youtube": "#", "ytmusic": "#" },
+    { "title": "Love on the Dancefloor", "artwork": "/uploads/love-on-the-dancefloor.jpg", "color": "#12d67f", "spotify": "#", "apple": "#", "youtube": "#", "ytmusic": "#" }
+  ]
+}

@@ -1,8 +1,9 @@
 ---
-import hero from '../data/hero.json';
-const seg = `${hero.releaseTitle} — <em>Out Now</em> — `;
-const line = seg.repeat(3);
+import data from '../data/releases.json';
+const titles = data.releases.map((r) => r.title);
+const unit = `<span class="mq-title">${titles[0]}</span><span class="mq-gap"> </span><span class="mq-on">Out Now</span><span class="mq-gap"> </span>`;
+const line = unit.repeat(4);
 ---
-<div class="marquee t-light" data-theme="light" aria-hidden="true" data-screen-label="Marquee">
+<div class="marquee t-light" data-theme="light" aria-hidden="true" data-screen-label="Marquee" data-titles={JSON.stringify(titles)}>
   <p class="marquee-line"><span class="mq" set:html={line}></span><span class="mq" set:html={line}></span></p>
 </div>
