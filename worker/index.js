@@ -23,9 +23,9 @@ function json(obj, status) {
 }
 function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
 function money(cents, cur) { return (cur || 'AUD') + ' ' + (Math.round(cents) / 100).toFixed(2); }
-function ticketNumber() {
+function refNo(prefix) {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
-  return 'MOD-' + String(n).padStart(6, '0');
+  return prefix + '-' + String(n).padStart(6, '0');
 }
 
 function ticketEmailHtml(o) {
@@ -45,6 +45,23 @@ function ticketEmailHtml(o) {
     + '</table></body></html>';
 }
 
+function orderEmailHtml(o) {
+  return '<!doctype html><html><body style="margin:0;background:#000;padding:24px;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#0b0b0b;border:1px solid #222;">'
+    + '<tr><td style="padding:28px 28px 6px;"><div style="font-size:26px;font-weight:900;letter-spacing:2px;color:#fff;">MODULR</div>'
+    + '<div style="font-size:11px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase;margin-top:6px;">Order Confirmed</div></td></tr>'
+    + '<tr><td style="padding:6px 28px 0;"><div style="font-size:22px;font-weight:800;color:#fff;text-transform:uppercase;">' + esc(o.product) + '</div>'
+    + '<div style="font-size:13px;color:#bdbdbd;margin-top:6px;">Size ' + esc(o.size) + '</div></td></tr>'
+    + '<tr><td style="padding:20px 28px;"><div style="border:1px dashed #333;border-radius:10px;padding:18px;text-align:center;">'
+    + '<div style="font-size:11px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase;">Order Number</div>'
+    + '<div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:2px;margin-top:6px;">' + esc(o.orderNo) + '</div></div></td></tr>'
+    + '<tr><td style="padding:0 28px 26px;"><div style="font-size:13px;color:#bdbdbd;">Name: <span style="color:#fff;">' + esc(o.name) + '</span></div>'
+    + '<div style="font-size:13px;color:#bdbdbd;margin-top:4px;">Ship to: <span style="color:#fff;">' + esc(o.address) + '</span></div>'
+    + '<div style="font-size:13px;color:#bdbdbd;margin-top:4px;">Paid: <span style="color:#fff;">' + esc(o.amount) + '</span></div>'
+    + '<div style="font-size:12px;color:#7a7a7a;margin-top:16px;">The band will post this to the address above. Thanks for the support.</div></td></tr>'
+    + '</table></body></html>';
+}
+
 async function sendEmail(env, to, subject, html) {
   const key = env.RESEND_API_KEY;
   if (!key || !to) return false;
@@ -61,7 +78,7 @@ async function sendEmail(env, to, subject, html) {
 
 async function handlePay(request, env) {
   try {
-    const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event } = await request.json();
+    const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item } = await request.json();
     if (!sourceId || !amount) return json({ ok: false, error: 'Missing payment details' }, 400);
 
     const token = env.SQUARE_ACCESS_TOKEN;
@@ -97,24 +114,29 @@ async function handlePay(request, env) {
       return json({ ok: false, error: msg }, 400);
     }
 
-    // Payment succeeded. For tickets, mint a number and email it.
-    let ticketNo = null, emailed = false;
+    // Payment succeeded. Mint a reference and email it.
+    let ticketNo = null, orderNo = null, emailed = false;
     if (kind === 'ticket') {
-      ticketNo = ticketNumber();
+      ticketNo = refNo('MOD');
       const ev = event || {};
       const html = ticketEmailHtml({
-        ticketNo: ticketNo,
-        name: buyerName || '',
-        venue: ev.venue || 'Modulr show',
-        city: ev.city || '',
-        date: ev.date || '',
-        doors: ev.doors || '',
+        ticketNo: ticketNo, name: buyerName || '',
+        venue: ev.venue || 'Modulr show', city: ev.city || '', date: ev.date || '', doors: ev.doors || '',
         amount: money(amount, payCurrency)
       });
       emailed = await sendEmail(env, buyerEmail, 'Your Modulr ticket ' + ticketNo, html);
+    } else if (kind === 'merch') {
+      orderNo = refNo('ORD');
+      const it = item || {};
+      const html = orderEmailHtml({
+        orderNo: orderNo, name: buyerName || '',
+        product: it.product || 'Modulr merch', size: it.size || '', address: it.address || '',
+        amount: money(amount, payCurrency)
+      });
+      emailed = await sendEmail(env, buyerEmail, 'Your Modulr order ' + orderNo, html);
     }
 
-    return json({ ok: true, id: data.payment && data.payment.id, ticketNo: ticketNo, emailed: emailed });
+    return json({ ok: true, id: data.payment && data.payment.id, ticketNo: ticketNo, orderNo: orderNo, emailed: emailed });
   } catch (e) {
     return json({ ok: false, error: 'Server error, please try again' }, 500);
   }

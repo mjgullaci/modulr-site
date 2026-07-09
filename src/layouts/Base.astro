@@ -76,9 +76,10 @@ const { title = seo.title, description = seo.description } = Astro.props;
           <p class="modal-label">Size</p>
           <div class="sizes" id="pmSizes"></div>
           <div class="pm-fields" id="pmFields">
-            <input id="pmBuyerName" type="text" placeholder="Full name" autocomplete="name" />
+            <input id="pmBuyerFirst" type="text" placeholder="First name" autocomplete="given-name" />
+            <input id="pmBuyerLast" type="text" placeholder="Last name" autocomplete="family-name" />
             <input id="pmBuyerEmail" type="email" placeholder="Email" autocomplete="email" />
-            <textarea id="pmBuyerAddr" rows="2" placeholder="Shipping address"></textarea>
+            <textarea id="pmBuyerAddr" rows="2" placeholder="Shipping address (street, suburb, state, postcode)"></textarea>
           </div>
           <div id="pm-card-container" class="card-box"></div>
           <button class="btn btn-solid modal-cta" id="pmBuy" type="button" disabled>Select a size</button>
@@ -190,18 +191,19 @@ const { title = seo.title, description = seo.description } = Astro.props;
         if(!pmSize){ document.getElementById('pmStatus').textContent='Please choose a size.'; return; }
         if(!pmReady||!pmCard) return;
         var st=document.getElementById('pmStatus');
-        var nm=(document.getElementById('pmBuyerName').value||'').trim();
+        var fn=(document.getElementById('pmBuyerFirst').value||'').trim();
+        var ln=(document.getElementById('pmBuyerLast').value||'').trim();
         var em=(document.getElementById('pmBuyerEmail').value||'').trim();
         var ad=(document.getElementById('pmBuyerAddr').value||'').trim();
-        if(!nm||!em||!ad){ st.textContent='Please add your name, email and shipping address.'; return; }
+        if(!fn||!ln||em.indexOf('@')<1||!ad){ st.textContent='Please add your name, email and shipping address.'; return; }
         pmBuy.disabled=true; st.textContent='Processing...';
         try{
           var res=await pmCard.tokenize();
           if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; pmBuy.disabled=false; return; }
-          var note=pmName+' | size '+pmSize+' | '+nm+' | '+ad;
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(pmAmt*100), currency:CUR, note:note, buyerEmail:em }) });
+          var note=pmName+' | size '+pmSize+' | '+fn+' '+ln+' | '+ad;
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(pmAmt*100), currency:CUR, note:note, buyerEmail:em, buyerName:fn+' '+ln, kind:'merch', item:{ product:pmName, size:pmSize, address:ad } }) });
           var data=await r.json();
-          if(r.ok&&data.ok){ st.textContent='Payment complete. Order confirmed, we will email your shipping details.'; pmBuy.style.display='none'; }
+          if(r.ok&&data.ok){ st.textContent = data.emailed ? ('Order confirmed. '+(data.orderNo||'')+' emailed to '+em+'.') : ('Order confirmed'+(data.orderNo?(' '+data.orderNo):'')+'. The band will post it to your address.'); pmBuy.style.display='none'; }
           else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; pmBuy.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; pmBuy.disabled=false; }
       }); }
