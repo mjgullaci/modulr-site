@@ -18,7 +18,7 @@ function json(obj, status) {
 
 async function handlePay(request, env) {
   try {
-    const { sourceId, amount, currency, note } = await request.json();
+    const { sourceId, amount, currency, note, buyerEmail } = await request.json();
     if (!sourceId || !amount) return json({ ok: false, error: 'Missing payment details' }, 400);
 
     const token = env.SQUARE_ACCESS_TOKEN;
@@ -39,16 +39,19 @@ async function handlePay(request, env) {
       if (locData && locData.location && locData.location.currency) payCurrency = locData.location.currency;
     } catch (e) {}
 
+    const body = {
+      source_id: sourceId,
+      idempotency_key: crypto.randomUUID(),
+      amount_money: { amount: Math.round(amount), currency: payCurrency },
+      location_id: locationId,
+      note: note ? String(note).slice(0, 480) : 'Modulr'
+    };
+    if (buyerEmail && String(buyerEmail).indexOf('@') > 0) body.buyer_email_address = String(buyerEmail).slice(0, 254);
+
     const resp = await fetch(base + '/v2/payments', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        source_id: sourceId,
-        idempotency_key: crypto.randomUUID(),
-        amount_money: { amount: Math.round(amount), currency: payCurrency },
-        location_id: locationId,
-        note: note ? ('Modulr: ' + note).slice(0, 190) : 'Modulr'
-      })
+      body: JSON.stringify(body)
     });
 
     const data = await resp.json();

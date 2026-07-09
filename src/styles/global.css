@@ -567,3 +567,9 @@ body.menu-open { overflow: hidden; }
 .card-box { min-height:52px; margin-bottom:14px; }
 .tk-status { font:500 13px/1.4 var(--font-brand); margin-top:12px; min-height:18px; }
 .tk-alt { display:inline-block; margin-top:14px; font:600 12px/1 var(--font-brand); letter-spacing:.08em; text-transform:uppercase; text-decoration:underline; color:#0b0b0b; }
+
+/* store buyer fields */
+.pm-fields { display:flex; flex-direction:column; gap:8px; margin:14px 0 12px; }
+.pm-fields input, .pm-fields textarea { width:100%; box-sizing:border-box; border:1px solid #cfcfcf; border-radius:8px; padding:10px 12px; font:400 14px/1.3 var(--font-brand); color:#0b0b0b; background:#fff; }
+.pm-fields textarea { resize:vertical; min-height:52px; }
+.pm-fields input:focus, .pm-fields textarea:focus { outline:none; border-color:#0b0b0b; }

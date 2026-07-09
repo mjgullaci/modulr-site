@@ -66,7 +66,14 @@ const { title = seo.title, description = seo.description } = Astro.props;
           <span class="price" id="pmPrice"></span>
           <p class="modal-label">Size</p>
           <div class="sizes" id="pmSizes"></div>
+          <div class="pm-fields" id="pmFields">
+            <input id="pmBuyerName" type="text" placeholder="Full name" autocomplete="name" />
+            <input id="pmBuyerEmail" type="email" placeholder="Email" autocomplete="email" />
+            <textarea id="pmBuyerAddr" rows="2" placeholder="Shipping address"></textarea>
+          </div>
+          <div id="pm-card-container" class="card-box"></div>
           <button class="btn btn-solid modal-cta" id="pmBuy" type="button" disabled>Select a size</button>
+          <p id="pmStatus" class="tk-status" role="status" aria-live="polite"></p>
         </div>
       </div>
     </div>
@@ -100,13 +107,13 @@ const { title = seo.title, description = seo.description } = Astro.props;
 
       var ticketModal=document.getElementById('ticketModal');
       var sqCfg=null; try{ var cfgEl=document.getElementById('sq-config'); if(cfgEl) sqCfg=JSON.parse(cfgEl.textContent); }catch(e){}
-      var sqPayments=null, sqCard=null, sqReady=false, tkAmt=0, tkLabel='';
-      async function initSquare(){
-        if(sqReady||!sqCfg||!window.Square) return;
-        try{ sqPayments=window.Square.payments(sqCfg.appId, sqCfg.locationId); sqCard=await sqPayments.card(); await sqCard.attach('#card-container'); sqReady=true; }
-        catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; }
-      }
+      var CUR=(sqCfg&&sqCfg.currency)||'AUD';
+      var sqPayments=null;
+      function ensurePayments(){ if(!sqPayments&&sqCfg&&window.Square){ try{ sqPayments=window.Square.payments(sqCfg.appId, sqCfg.locationId); }catch(e){ sqPayments=null; } } return sqPayments; }
       function money(n,c){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'AUD'}).format(n); }catch(e){ return (c||'AUD')+' '+n.toFixed(2); } }
+
+      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='';
+      async function initTicketCard(){ if(tkReady) return; var p=ensurePayments(); if(!p) return; try{ tkCard=await p.card(); await tkCard.attach('#card-container'); tkReady=true; }catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; } }
       document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
         document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
         document.getElementById('tkDate').textContent=b.getAttribute('data-date')||'';
@@ -114,43 +121,69 @@ const { title = seo.title, description = seo.description } = Astro.props;
         tkLabel=b.getAttribute('data-venue')||'Show';
         tkAmt=parseFloat(b.getAttribute('data-amount')||'')||0;
         var amtEl=document.getElementById('tkAmount'), payBtn=document.getElementById('tkPayBtn'), st=document.getElementById('tkStatus'), cardBox=document.getElementById('card-container');
-        var cur=(sqCfg&&sqCfg.currency)||'AUD';
         st.textContent='';
         var url=b.getAttribute('data-url')||'#', ext=document.getElementById('tkExternal');
         if(url&&url!=='#'){ ext.href=url; ext.style.display=''; } else { ext.style.display='none'; }
         openModal(ticketModal);
-        if(sqCfg && tkAmt>0){ amtEl.textContent=money(tkAmt,cur)+' per ticket'; payBtn.style.display=''; cardBox.style.display=''; payBtn.disabled=false; initSquare(); }
+        if(sqCfg && tkAmt>0){ amtEl.textContent=money(tkAmt,CUR)+' per ticket'; payBtn.style.display=''; cardBox.style.display=''; payBtn.disabled=false; initTicketCard(); }
         else { amtEl.textContent=''; payBtn.style.display='none'; cardBox.style.display='none'; if(!sqCfg) st.textContent='Checkout is being switched on. Use the venue link below for now.'; }
       });});
       var tkPayBtn=document.getElementById('tkPayBtn');
       if(tkPayBtn){ tkPayBtn.addEventListener('click',async function(){
-        if(!sqReady||!sqCard) return;
-        var st=document.getElementById('tkStatus'), cur=(sqCfg&&sqCfg.currency)||'AUD';
+        if(!tkReady||!tkCard) return;
+        var st=document.getElementById('tkStatus');
         tkPayBtn.disabled=true; st.textContent='Processing...';
         try{
-          var res=await sqCard.tokenize();
+          var res=await tkCard.tokenize();
           if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; tkPayBtn.disabled=false; return; }
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:cur, note:tkLabel }) });
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel }) });
           var data=await r.json();
           if(r.ok&&data.ok){ st.textContent='Payment complete. Your tickets are on the way by email.'; tkPayBtn.style.display='none'; }
           else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; tkPayBtn.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
       }); }
 
-      var productModal=document.getElementById('productModal'), pmBuy=document.getElementById('pmBuy'), pmUrl='#', pmSize=null;
+      var productModal=document.getElementById('productModal'), pmBuy=document.getElementById('pmBuy');
+      var pmCard=null, pmReady=false, pmSize=null, pmAmt=0, pmName='';
+      async function initStoreCard(){ if(pmReady) return; var p=ensurePayments(); if(!p) return; try{ pmCard=await p.card(); await pmCard.attach('#pm-card-container'); pmReady=true; }catch(e){ var s=document.getElementById('pmStatus'); if(s) s.textContent='Card form could not load.'; } }
+      function pmRefreshBtn(){ if(!sqCfg||!(pmAmt>0)){ pmBuy.disabled=true; pmBuy.textContent='Coming soon'; return; } if(pmSize){ pmBuy.disabled=false; pmBuy.textContent='Pay '+money(pmAmt,CUR); } else { pmBuy.disabled=true; pmBuy.textContent='Select a size'; } }
       document.querySelectorAll('.buy-btn').forEach(function(b){ b.addEventListener('click',function(){
-        document.getElementById('pmName').textContent=b.getAttribute('data-name')||'Product';
-        var price=b.getAttribute('data-price')||''; document.getElementById('pmPrice').textContent=price?price:'Price on request';
-        var img=document.getElementById('pmImg'); img.src=b.getAttribute('data-image')||''; img.alt=b.getAttribute('data-name')||'';
-        pmUrl=b.getAttribute('data-url')||'#'; pmSize=null; pmBuy.disabled=true; pmBuy.textContent='Select a size';
+        pmName=b.getAttribute('data-name')||'Product';
+        document.getElementById('pmName').textContent=pmName;
+        pmAmt=parseFloat(b.getAttribute('data-price')||'')||0;
+        document.getElementById('pmPrice').textContent=pmAmt>0?money(pmAmt,CUR):'Price on request';
+        var img=document.getElementById('pmImg'); img.src=b.getAttribute('data-image')||''; img.alt=pmName;
+        pmSize=null; document.getElementById('pmStatus').textContent='';
         var sizes=[]; try{sizes=JSON.parse(b.getAttribute('data-sizes'));}catch(e){sizes=['S','M','L','XL','XXL'];}
         var box=document.getElementById('pmSizes'); box.innerHTML='';
         sizes.forEach(function(sz){ var el=document.createElement('button'); el.type='button'; el.className='size'; el.textContent=sz;
-          el.addEventListener('click',function(){ box.querySelectorAll('.size').forEach(function(x){x.classList.remove('sel');}); el.classList.add('sel'); pmSize=sz; pmBuy.disabled=false; pmBuy.textContent='Purchase'; });
+          el.addEventListener('click',function(){ box.querySelectorAll('.size').forEach(function(x){x.classList.remove('sel');}); el.classList.add('sel'); pmSize=sz; pmRefreshBtn(); });
           box.appendChild(el); });
+        var cardBox=document.getElementById('pm-card-container'), fields=document.getElementById('pmFields');
+        if(sqCfg && pmAmt>0){ cardBox.style.display=''; if(fields) fields.style.display=''; pmBuy.style.display=''; initStoreCard(); }
+        else { cardBox.style.display='none'; if(fields) fields.style.display='none'; }
+        pmRefreshBtn();
         openModal(productModal);
       });});
-      pmBuy.addEventListener('click',function(){ if(!pmSize)return; if(pmUrl&&pmUrl!=='#'){ window.open(pmUrl+(pmUrl.indexOf('?')>-1?'&':'?')+'size='+encodeURIComponent(pmSize),'_blank','noopener'); } else { pmBuy.textContent='Checkout coming soon'; } });
+      if(pmBuy){ pmBuy.addEventListener('click',async function(){
+        if(!pmSize){ document.getElementById('pmStatus').textContent='Please choose a size.'; return; }
+        if(!pmReady||!pmCard) return;
+        var st=document.getElementById('pmStatus');
+        var nm=(document.getElementById('pmBuyerName').value||'').trim();
+        var em=(document.getElementById('pmBuyerEmail').value||'').trim();
+        var ad=(document.getElementById('pmBuyerAddr').value||'').trim();
+        if(!nm||!em||!ad){ st.textContent='Please add your name, email and shipping address.'; return; }
+        pmBuy.disabled=true; st.textContent='Processing...';
+        try{
+          var res=await pmCard.tokenize();
+          if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; pmBuy.disabled=false; return; }
+          var note=pmName+' | size '+pmSize+' | '+nm+' | '+ad;
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(pmAmt*100), currency:CUR, note:note, buyerEmail:em }) });
+          var data=await r.json();
+          if(r.ok&&data.ok){ st.textContent='Payment complete. Order confirmed, we will email your shipping details.'; pmBuy.style.display='none'; }
+          else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; pmBuy.disabled=false; }
+        }catch(e){ st.textContent='Something went wrong. Please try again.'; pmBuy.disabled=false; }
+      }); }
     })();
   </script>
 </body>

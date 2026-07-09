@@ -1,1 +1,14 @@
-{ "name": "Silhouette Tee, Black", "price": "", "image": "/uploads/tee-black.jpg", "shopUrl": "#", "order": 1, "sizes": ["S","M","L","XL","XXL"] }
+{
+  "name": "Silhouette Tee, Black",
+  "price": "45.00",
+  "image": "/uploads/tee-black.jpg",
+  "shopUrl": "#",
+  "order": 1,
+  "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+  ]
+}

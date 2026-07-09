@@ -13,7 +13,7 @@ const products = Object.values(mods).map((m) => m.default).sort((a, b) => (a.ord
           </div>
           <div class="prod-info">
             <h3>{p.name}</h3>
-            <span class="price">{p.price ? p.price : 'Price on request'}</span>
+            <span class="price">{p.price ? 'A$' + p.price : 'Price on request'}</span>
           </div>
           <button class="btn btn-sm buy-btn" type="button"
             data-name={p.name} data-image={p.image || ''} data-price={p.price || ''}
