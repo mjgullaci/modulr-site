@@ -525,8 +525,11 @@ body.menu-open { overflow: hidden; }
 
 /* marquee: faster + crossfading title */
 .marquee-line { animation-duration:30s; }
-.mq-title { display:inline-block; transition:opacity .5s ease; }
-.mq-gap { display:inline-block; width:.55em; }
+.mq-seg { display:inline-block; }
+.mq-title { display:inline-grid; vertical-align:bottom; }
+.mq-title .t { grid-area:1 / 1; opacity:0; transition:opacity .55s ease; white-space:nowrap; }
+.mq-title .t.on { opacity:1; }
+.mq-dot { margin:0 .45em; }
 
 /* store: frameless (Yeezy style) */
 #store .store-grid { display:grid; grid-template-columns:1fr; gap:46px; max-width:1000px; margin:0 auto; justify-items:center; }

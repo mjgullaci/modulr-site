@@ -97,8 +97,8 @@ const { title = seo.title, description = seo.description } = Astro.props;
       var form=document.getElementById('signupForm');
       if(form){ form.addEventListener('submit',function(e){ e.preventDefault(); form.classList.add('sent'); }); }
 
-      var mq=document.querySelector('.marquee[data-titles]');
-      if(mq){ var titles=[]; try{titles=JSON.parse(mq.getAttribute('data-titles'));}catch(e){} if(titles.length>1){ var idx=0; setInterval(function(){ idx=(idx+1)%titles.length; var els=mq.querySelectorAll('.mq-title'); els.forEach(function(el){el.style.opacity=0;}); setTimeout(function(){ els.forEach(function(el){el.textContent=titles[idx];el.style.opacity=1;}); },500); },3000); } }
+      var mqEl=document.querySelector('.marquee');
+      if(mqEl){ var groups=mqEl.querySelectorAll('.mq-title'); if(groups.length){ var tcount=groups[0].querySelectorAll('.t').length; if(tcount>1){ var midx=0; setInterval(function(){ midx=(midx+1)%tcount; groups.forEach(function(g){ var ts=g.querySelectorAll('.t'); for(var i=0;i<ts.length;i++){ ts[i].classList.toggle('on', i===midx); } }); }, 2800); } } }
 
       function openModal(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); document.body.classList.add('menu-open'); }
       function closeModal(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); document.body.classList.remove('menu-open'); }
