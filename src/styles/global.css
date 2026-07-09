@@ -530,7 +530,7 @@ body.menu-open { overflow: hidden; }
 /* store: frameless (Yeezy style) */
 #store .store-grid { display:grid; grid-template-columns:1fr; gap:46px; max-width:1000px; margin:0 auto; justify-items:center; }
 #store .product { width:100%; max-width:430px; text-align:center; }
-#store .prod-art { width:100%; aspect-ratio:4/5; background:transparent; border:0; display:flex; align-items:center; justify-content:center; }
+#store .prod-art { width:100%; aspect-ratio:1/1; background:transparent; border:0; display:flex; align-items:center; justify-content:center; }
 #store .prod-art img { width:100%; height:100%; object-fit:contain; display:block; }
 #store .prod-info { margin-top:12px; display:flex; flex-direction:column; align-items:center; gap:5px; }
 #store .prod-info h3 { font:800 clamp(15px,1.4vw,18px)/1.2 var(--font-brand); letter-spacing:.02em; text-transform:uppercase; }
