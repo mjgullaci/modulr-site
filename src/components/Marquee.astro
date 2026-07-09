@@ -1,29 +1,11 @@
 ---
 import data from '../data/releases.json';
 const titles = data.releases.map((r) => r.title);
-const reps = [0, 1, 2, 3];
+const unit = titles
+  .map((t) => `<span class="mq-title">${t}</span><span class="mq-dot">&bull;</span><em>Out Now</em><span class="mq-dot">&bull;</span>`)
+  .join('');
+const line = unit.repeat(2);
 ---
 <div class="marquee t-light" data-theme="light" aria-hidden="true" data-screen-label="Marquee">
-  <p class="marquee-line">
-    <span class="mq">
-      {reps.map(() => (
-        <span class="mq-seg">
-          <span class="mq-title">{titles.map((t, i) => (<span class={i === 0 ? 't on' : 't'}>{t}</span>))}</span>
-          <span class="mq-dot">&bull;</span>
-          <em>Out Now</em>
-          <span class="mq-dot">&bull;</span>
-        </span>
-      ))}
-    </span>
-    <span class="mq">
-      {reps.map(() => (
-        <span class="mq-seg">
-          <span class="mq-title">{titles.map((t, i) => (<span class={i === 0 ? 't on' : 't'}>{t}</span>))}</span>
-          <span class="mq-dot">&bull;</span>
-          <em>Out Now</em>
-          <span class="mq-dot">&bull;</span>
-        </span>
-      ))}
-    </span>
-  </p>
+  <p class="marquee-line"><span class="mq" set:html={line}></span><span class="mq" set:html={line}></span></p>
 </div>

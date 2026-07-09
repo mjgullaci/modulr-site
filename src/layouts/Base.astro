@@ -97,8 +97,7 @@ const { title = seo.title, description = seo.description } = Astro.props;
       var form=document.getElementById('signupForm');
       if(form){ form.addEventListener('submit',function(e){ e.preventDefault(); form.classList.add('sent'); }); }
 
-      var mqEl=document.querySelector('.marquee');
-      if(mqEl){ var groups=mqEl.querySelectorAll('.mq-title'); if(groups.length){ var tcount=groups[0].querySelectorAll('.t').length; if(tcount>1){ var midx=0; setInterval(function(){ midx=(midx+1)%tcount; groups.forEach(function(g){ var ts=g.querySelectorAll('.t'); for(var i=0;i<ts.length;i++){ ts[i].classList.toggle('on', i===midx); } }); }, 2800); } } }
+      // marquee is a continuous even ticker, no JS needed
 
       function openModal(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); document.body.classList.add('menu-open'); }
       function closeModal(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); document.body.classList.remove('menu-open'); }
