@@ -101,7 +101,15 @@ const { title = seo.title, description = seo.description } = Astro.props;
       var form=document.getElementById('signupForm');
       if(form){ form.addEventListener('submit',function(e){ e.preventDefault(); form.classList.add('sent'); }); }
 
-      // marquee is a continuous even ticker, no JS needed
+      var mqEl=document.querySelector('.marquee');
+      var mqLine=mqEl&&mqEl.querySelector('.marquee-line');
+      if(mqEl&&mqLine&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+        var mqHalf=0, mqLast=0, mqSpeed=0, mqPos=0;
+        function mqMeasure(){ mqHalf=mqLine.scrollWidth/2; mqSpeed=mqHalf/15; }
+        mqMeasure(); window.addEventListener('resize', mqMeasure);
+        function mqStep(ts){ if(!mqLast) mqLast=ts; var dt=(ts-mqLast)/1000; mqLast=ts; if(dt>0.1) dt=0.1; if(mqHalf>0){ mqPos+=mqSpeed*dt; if(mqPos>=mqHalf) mqPos-=mqHalf; mqEl.scrollLeft=mqPos; } requestAnimationFrame(mqStep); }
+        requestAnimationFrame(mqStep);
+      }
 
       function openModal(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); document.body.classList.add('menu-open'); }
       function closeModal(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); document.body.classList.remove('menu-open'); }
