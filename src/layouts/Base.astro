@@ -128,8 +128,8 @@ const { title = seo.title, description = seo.description } = Astro.props;
         var st=document.getElementById('tkStatus'), cur=(sqCfg&&sqCfg.currency)||'AUD';
         tkPayBtn.disabled=true; st.textContent='Processing...';
         try{
-          var res=await sqCard.tokenize({ amount:tkAmt.toFixed(2), currencyCode:cur, intent:'CHARGE', customerInitiated:true, sellerKeyedIn:false });
-          if(res.status!=='OK'){ st.textContent='Please check your card details.'; tkPayBtn.disabled=false; return; }
+          var res=await sqCard.tokenize();
+          if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; tkPayBtn.disabled=false; return; }
           var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:cur, note:tkLabel }) });
           var data=await r.json();
           if(r.ok&&data.ok){ st.textContent='Payment complete. Your tickets are on the way by email.'; tkPayBtn.style.display='none'; }
