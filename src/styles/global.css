@@ -279,7 +279,7 @@ body.menu-open { overflow: hidden; }
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: .05em;
-  font-size: clamp(30px, 4vw, 58px);
+  font-size: clamp(22px, 4vw, 58px);
   line-height: 1;
   animation: mq-scroll 45s linear infinite;
 }
@@ -524,7 +524,7 @@ body.menu-open { overflow: hidden; }
 @media (min-width:900px){ .release-grid { grid-template-columns:repeat(3,1fr); gap:30px; align-items:start; } }
 
 /* marquee: faster + crossfading title */
-.marquee-line { animation-duration:15s; will-change:transform; -webkit-backface-visibility:hidden; backface-visibility:hidden; }
+.marquee-line { animation-duration:15s; }
 .mq-dot { margin:0 .5em; }
 
 /* store: frameless (Yeezy style) */
