@@ -5,6 +5,9 @@ export default {
     if (request.method === 'POST' && url.pathname === '/api/pay') {
       return handlePay(request, env);
     }
+    if (request.method === 'POST' && url.pathname === '/api/subscribe') {
+      return handleSubscribe(request, env);
+    }
     const res = await env.ASSETS.fetch(request);
     try {
       const ct = res.headers.get('content-type') || '';
@@ -74,6 +77,27 @@ async function sendEmail(env, to, subject, html) {
     });
     return resp.ok;
   } catch (e) { return false; }
+}
+
+async function handleSubscribe(request, env) {
+  try {
+    const { email } = await request.json();
+    if (!email || String(email).indexOf('@') < 1) return json({ ok: false, error: 'Please enter a valid email' }, 400);
+    const base = env.MC_URL, u = env.MC_U, id = env.MC_ID, fid = env.MC_FID || '';
+    if (!base || !u || !id) return json({ ok: false, error: 'Signup is not switched on yet' }, 503);
+    const q = 'u=' + encodeURIComponent(u) + '&id=' + encodeURIComponent(id) + (fid ? ('&f_id=' + encodeURIComponent(fid)) : '') + '&EMAIL=' + encodeURIComponent(email) + '&c=cb';
+    const resp = await fetch(base + '/subscribe/post-json?' + q, { headers: { 'User-Agent': 'ModulrSite' } });
+    const t = await resp.text();
+    let data = {};
+    const m = t.match(/\{[\s\S]*\}/);
+    if (m) { try { data = JSON.parse(m[0]); } catch (e) {} }
+    if (data.result === 'success') return json({ ok: true });
+    const msg = (data.msg || 'Could not sign you up, please try again').replace(/^\d+\s*-\s*/, '');
+    if (/already/i.test(msg)) return json({ ok: true, already: true });
+    return json({ ok: false, error: msg });
+  } catch (e) {
+    return json({ ok: false, error: 'Something went wrong, please try again' }, 500);
+  }
 }
 
 async function handlePay(request, env) {

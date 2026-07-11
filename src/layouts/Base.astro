@@ -105,7 +105,17 @@ const { title = seo.title, description = seo.description } = Astro.props;
       if(burger&&menu){ burger.addEventListener('click',function(){setMenu(!menu.classList.contains('open'));}); menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){setMenu(false);});}); }
 
       var form=document.getElementById('signupForm');
-      if(form){ form.addEventListener('submit',function(e){ e.preventDefault(); form.classList.add('sent'); }); }
+      if(form){ form.addEventListener('submit',async function(e){ e.preventDefault();
+        var input=form.querySelector('input[type=email]'), btn=form.querySelector('button');
+        var email=(input&&input.value||'').trim(); if(email.indexOf('@')<1) return;
+        if(btn) btn.disabled=true;
+        try{
+          var r=await fetch('/api/subscribe',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email:email }) });
+          var d=await r.json();
+          if(r.ok&&d.ok){ form.classList.add('sent'); }
+          else { var msg=form.querySelector('.sent-msg'); if(msg) msg.textContent=(d&&d.error)?d.error:'Could not sign you up, please try again.'; form.classList.add('sent'); }
+        }catch(e){ form.classList.add('sent'); }
+      }); }
 
       var mqEl=document.querySelector('.marquee');
       var mqLine=mqEl&&mqEl.querySelector('.marquee-line');
