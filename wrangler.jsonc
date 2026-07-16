@@ -3,5 +3,5 @@
   "compatibility_date": "2025-06-01",
   "main": "worker/index.js",
   "assets": { "directory": "./dist", "binding": "ASSETS" },
-  "vars": { "SQUARE_ENV": "sandbox", "SQUARE_LOCATION_ID": "LQTPXJQWC7EB3", "TICKET_FROM": "Modulr Tickets <onboarding@resend.dev>", "MC_URL": "https://gmail.us1.list-manage.com", "MC_U": "10021e62cf18cf6914145398f", "MC_ID": "d50375f97b", "MC_FID": "007c2fe5f0" }
+  "vars": { "SQUARE_ENV": "production", "SQUARE_LOCATION_ID": "LB81KTM6MZD3G", "TICKET_FROM": "Modulr Tickets <tickets@modulrofficial.com>", "TICKET_REPLY_TO": "modulrband@gmail.com", "MC_URL": "https://gmail.us1.list-manage.com", "MC_U": "10021e62cf18cf6914145398f", "MC_ID": "d50375f97b", "MC_FID": "007c2fe5f0" }
 }

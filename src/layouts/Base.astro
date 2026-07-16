@@ -93,7 +93,7 @@ const { title = seo.title, description = seo.description } = Astro.props;
     (function () {
       var loader=document.getElementById('loader'), vid=document.getElementById('loaderVid'), closed=false;
       function closeLoader(){ if(closed)return; closed=true; loader.classList.add('is-done'); setTimeout(function(){loader.remove();},900); }
-      if(loader&&vid){ vid.addEventListener('ended',closeLoader); vid.addEventListener('error',closeLoader); loader.addEventListener('click',closeLoader); setTimeout(closeLoader,8000); if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){setTimeout(closeLoader,500);} var p=vid.play&&vid.play(); if(p&&p.catch)p.catch(function(){setTimeout(closeLoader,1200);}); }
+      if(loader&&vid){ vid.addEventListener('ended',closeLoader); vid.addEventListener('error',closeLoader); loader.addEventListener('click',closeLoader); setTimeout(closeLoader,6000); if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){setTimeout(closeLoader,400);} var started=false; vid.addEventListener('playing',function(){started=true;}); vid.addEventListener('timeupdate',function(){ if(vid.currentTime>0.05) started=true; }); function playCheck(){ if(closed) return; if(vid.paused && !started){ closeLoader(); } } try{ var p=vid.play&&vid.play(); if(p&&p.then){ p.then(function(){ setTimeout(playCheck,150); }).catch(function(){ closeLoader(); }); } else { setTimeout(playCheck,500); } }catch(e){ closeLoader(); } setTimeout(playCheck,700); }
 
       var header=document.getElementById('siteHeader');
       var themed=document.querySelectorAll('main [data-theme], footer[data-theme]');

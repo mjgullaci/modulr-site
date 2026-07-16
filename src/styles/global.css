@@ -132,6 +132,20 @@ a:hover { color: inherit; }
   mix-blend-mode: screen;
 }
 
+/* iOS Safari (esp. Low Power Mode) overlays a play button when autoplay is blocked.
+   Hide every media-control affordance and let taps fall through to the loader. */
+#loader video { pointer-events: none; }
+#loader video::-webkit-media-controls,
+#loader video::-webkit-media-controls-enclosure,
+#loader video::-webkit-media-controls-panel,
+#loader video::-webkit-media-controls-overlay-play-button,
+#loader video::-webkit-media-controls-start-playback-button,
+#loader video::-webkit-media-controls-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+}
+
 /* ---------- header ---------- */
 
 #siteHeader {

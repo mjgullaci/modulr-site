@@ -1,9 +1,9 @@
 // Modulr site worker: static site + secure Square payment + ticket email.
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'POST' && url.pathname === '/api/pay') {
-      return handlePay(request, env);
+      return handlePay(request, env, ctx);
     }
     if (request.method === 'POST' && url.pathname === '/api/subscribe') {
       return handleSubscribe(request, env);
@@ -28,40 +28,59 @@ function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function 
 function money(cents, cur) { return (cur || 'AUD') + ' ' + (Math.round(cents) / 100).toFixed(2); }
 function refNo(prefix) {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
-  return prefix + '-' + String(n).padStart(6, '0');
+  return prefix + String(n).padStart(6, '0');
 }
 
 function ticketEmailHtml(o) {
-  const sub = esc(o.date) + (o.city ? (' &middot; ' + esc(o.city)) : '') + (o.doors ? (' &middot; Doors ' + esc(o.doors)) : '');
-  return '<!doctype html><html><body style="margin:0;background:#000;padding:24px;font-family:Arial,Helvetica,sans-serif;">'
-    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#0b0b0b;border:1px solid #222;">'
-    + '<tr><td style="padding:28px 28px 6px;"><div style="font-size:26px;font-weight:900;letter-spacing:2px;color:#fff;">MODULR</div>'
-    + '<div style="font-size:11px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase;margin-top:6px;">Your Ticket</div></td></tr>'
-    + '<tr><td style="padding:6px 28px 0;"><div style="font-size:22px;font-weight:800;color:#fff;text-transform:uppercase;">' + esc(o.venue) + '</div>'
-    + '<div style="font-size:13px;color:#bdbdbd;margin-top:6px;">' + sub + '</div></td></tr>'
-    + '<tr><td style="padding:20px 28px;"><div style="border:1px dashed #333;border-radius:10px;padding:18px;text-align:center;">'
-    + '<div style="font-size:11px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase;">Ticket Number</div>'
-    + '<div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:2px;margin-top:6px;">' + esc(o.ticketNo) + '</div></div></td></tr>'
-    + '<tr><td style="padding:0 28px 26px;"><div style="font-size:13px;color:#bdbdbd;">Name: <span style="color:#fff;">' + esc(o.name) + '</span></div>'
-    + '<div style="font-size:13px;color:#bdbdbd;margin-top:4px;">Paid: <span style="color:#fff;">' + esc(o.amount) + '</span></div>'
-    + '<div style="font-size:12px;color:#7a7a7a;margin-top:16px;">Show this email at the door. See you there.</div></td></tr>'
+  var logo = 'https://modulrofficial.com/uploads/modulr-wordmark.png';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+    + '<body style="margin:0;padding:24px 12px;background:#000000;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;margin:0 auto;background:#0b0b0b;border:1px solid #222222;border-radius:16px;">'
+    + '<tr><td align="center" style="padding:34px 32px 0;">'
+    + '<img src="' + logo + '" width="196" alt="MODULR" style="display:block;width:196px;max-width:58%;height:auto;">'
+    + '<div style="font-size:12px;font-weight:bold;letter-spacing:6px;color:#8a8a8a;margin-top:14px;">E &middot; TICKET</div></td></tr>'
+    + '<tr><td style="padding:18px 32px 0;"><div style="border-top:1px solid #222222;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
+    + '<tr><td align="center" style="padding:22px 32px 0;">'
+    + '<div style="font-size:30px;font-weight:800;letter-spacing:1px;color:#ffffff;text-transform:uppercase;line-height:1.08;">' + esc(o.venue) + '</div>'
+    + (o.city ? '<div style="font-size:13px;font-weight:bold;letter-spacing:2px;color:#bdbdbd;text-transform:uppercase;margin-top:10px;">' + esc(o.city) + '</div>' : '') + '</td></tr>'
+    + '<tr><td style="padding:22px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+    + '<td align="center" width="50%" style="border-right:1px solid #222222;padding:2px 6px;"><div style="font-size:11px;font-weight:bold;letter-spacing:4px;color:#8a8a8a;">DATE</div>'
+    + '<div style="font-size:19px;font-weight:800;color:#ffffff;margin-top:6px;">' + esc(o.date || 'TBA') + '</div></td>'
+    + '<td align="center" width="50%" style="padding:2px 6px;"><div style="font-size:11px;font-weight:bold;letter-spacing:4px;color:#8a8a8a;">DOORS</div>'
+    + '<div style="font-size:19px;font-weight:800;color:#ffffff;margin-top:6px;">' + esc(o.doors || 'TBA') + '</div></td>'
+    + '</tr></table></td></tr>'
+    + '<tr><td style="padding:24px 22px 0;"><div style="border-top:2px dashed #3a3a3a;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
+    + '<tr><td align="center" style="padding:20px 32px 0;"><div style="font-size:11px;font-weight:bold;letter-spacing:5px;color:#8a8a8a;">ADMIT ONE</div>'
+    + '<div style="font-size:30px;font-weight:800;letter-spacing:6px;color:#ffffff;margin-top:10px;font-family:Courier New,Courier,monospace;">' + esc(o.ticketNo) + '</div></td></tr>'
+    + '<tr><td style="padding:22px 32px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+    + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;">NAME</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;">' + esc(o.name) + '</td></tr>'
+    + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;padding-top:8px;">PAID</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;padding-top:8px;">' + esc(o.amount) + '</td></tr>'
+    + '</table></td></tr>'
+    + '<tr><td align="center" style="padding:22px 32px 30px;"><div style="font-size:12px;color:#7a7a7a;">Show this email at the door. See you on the floor.</div></td></tr>'
     + '</table></body></html>';
 }
 
 function orderEmailHtml(o) {
-  return '<!doctype html><html><body style="margin:0;background:#000;padding:24px;font-family:Arial,Helvetica,sans-serif;">'
-    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#0b0b0b;border:1px solid #222;">'
-    + '<tr><td style="padding:28px 28px 6px;"><div style="font-size:26px;font-weight:900;letter-spacing:2px;color:#fff;">MODULR</div>'
-    + '<div style="font-size:11px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase;margin-top:6px;">Order Confirmed</div></td></tr>'
-    + '<tr><td style="padding:6px 28px 0;"><div style="font-size:22px;font-weight:800;color:#fff;text-transform:uppercase;">' + esc(o.product) + '</div>'
-    + '<div style="font-size:13px;color:#bdbdbd;margin-top:6px;">Size ' + esc(o.size) + '</div></td></tr>'
-    + '<tr><td style="padding:20px 28px;"><div style="border:1px dashed #333;border-radius:10px;padding:18px;text-align:center;">'
-    + '<div style="font-size:11px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase;">Order Number</div>'
-    + '<div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:2px;margin-top:6px;">' + esc(o.orderNo) + '</div></div></td></tr>'
-    + '<tr><td style="padding:0 28px 26px;"><div style="font-size:13px;color:#bdbdbd;">Name: <span style="color:#fff;">' + esc(o.name) + '</span></div>'
-    + '<div style="font-size:13px;color:#bdbdbd;margin-top:4px;">Ship to: <span style="color:#fff;">' + esc(o.address) + '</span></div>'
-    + '<div style="font-size:13px;color:#bdbdbd;margin-top:4px;">Paid: <span style="color:#fff;">' + esc(o.amount) + '</span></div>'
-    + '<div style="font-size:12px;color:#7a7a7a;margin-top:16px;">The band will post this to the address above. Thanks for the support.</div></td></tr>'
+  var logo = 'https://modulrofficial.com/uploads/modulr-wordmark.png';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+    + '<body style="margin:0;padding:24px 12px;background:#000000;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;margin:0 auto;background:#0b0b0b;border:1px solid #222222;border-radius:16px;">'
+    + '<tr><td align="center" style="padding:34px 32px 0;">'
+    + '<img src="' + logo + '" width="196" alt="MODULR" style="display:block;width:196px;max-width:58%;height:auto;">'
+    + '<div style="font-size:12px;font-weight:bold;letter-spacing:6px;color:#8a8a8a;margin-top:14px;">ORDER CONFIRMED</div></td></tr>'
+    + '<tr><td style="padding:18px 32px 0;"><div style="border-top:1px solid #222222;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
+    + '<tr><td align="center" style="padding:22px 32px 0;">'
+    + '<div style="font-size:28px;font-weight:800;letter-spacing:1px;color:#ffffff;text-transform:uppercase;line-height:1.08;">' + esc(o.product) + '</div>'
+    + '<div style="font-size:13px;font-weight:bold;letter-spacing:2px;color:#bdbdbd;text-transform:uppercase;margin-top:10px;">Size ' + esc(o.size) + '</div></td></tr>'
+    + '<tr><td style="padding:24px 22px 0;"><div style="border-top:2px dashed #3a3a3a;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
+    + '<tr><td align="center" style="padding:20px 32px 0;"><div style="font-size:11px;font-weight:bold;letter-spacing:5px;color:#8a8a8a;">ORDER NUMBER</div>'
+    + '<div style="font-size:30px;font-weight:800;letter-spacing:6px;color:#ffffff;margin-top:10px;font-family:Courier New,Courier,monospace;">' + esc(o.orderNo) + '</div></td></tr>'
+    + '<tr><td style="padding:22px 32px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+    + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;">NAME</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;">' + esc(o.name) + '</td></tr>'
+    + '<tr><td valign="top" style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;padding-top:8px;">SHIP TO</td><td align="right" style="font-size:14px;color:#ffffff;padding-top:8px;">' + esc(o.address) + '</td></tr>'
+    + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;padding-top:8px;">PAID</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;padding-top:8px;">' + esc(o.amount) + '</td></tr>'
+    + '</table></td></tr>'
+    + '<tr><td align="center" style="padding:22px 32px 30px;"><div style="font-size:12px;color:#7a7a7a;">The band will post this to the address above. Thanks for the support.</div></td></tr>'
     + '</table></body></html>';
 }
 
@@ -73,7 +92,7 @@ async function sendEmail(env, to, subject, html) {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: from, to: [to], subject: subject, html: html })
+      body: JSON.stringify({ from: from, to: [to], subject: subject, html: html, reply_to: env.TICKET_REPLY_TO || 'modulrband@gmail.com' })
     });
     return resp.ok;
   } catch (e) { return false; }
@@ -100,7 +119,26 @@ async function handleSubscribe(request, env) {
   }
 }
 
-async function handlePay(request, env) {
+function mcSubscribeUrl(env, email, first, last) {
+  const base = env.MC_URL, u = env.MC_U, id = env.MC_ID, fid = env.MC_FID || '';
+  if (!base || !u || !id || !email) return null;
+  let q = 'u=' + encodeURIComponent(u) + '&id=' + encodeURIComponent(id) + (fid ? ('&f_id=' + encodeURIComponent(fid)) : '') + '&EMAIL=' + encodeURIComponent(email);
+  if (first) q += '&FNAME=' + encodeURIComponent(first);
+  if (last) q += '&LNAME=' + encodeURIComponent(last);
+  return base + '/subscribe/post-json?' + q + '&c=cb';
+}
+async function mcAddQuietly(env, email, name) {
+  try {
+    const parts = String(name || '').trim().split(/\s+/);
+    const first = parts.shift() || '';
+    const last = parts.join(' ');
+    const url = mcSubscribeUrl(env, email, first, last);
+    if (!url) return;
+    await fetch(url, { headers: { 'User-Agent': 'ModulrSite' } });
+  } catch (e) {}
+}
+
+async function handlePay(request, env, ctx) {
   try {
     const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item } = await request.json();
     if (!sourceId || !amount) return json({ ok: false, error: 'Missing payment details' }, 400);
@@ -160,6 +198,9 @@ async function handlePay(request, env) {
       emailed = await sendEmail(env, buyerEmail, 'Your Modulr order ' + orderNo, html);
     }
 
+    if (buyerEmail && String(buyerEmail).indexOf('@') > 0 && ctx && ctx.waitUntil) {
+      ctx.waitUntil(mcAddQuietly(env, buyerEmail, buyerName));
+    }
     return json({ ok: true, id: data.payment && data.payment.id, ticketNo: ticketNo, orderNo: orderNo, emailed: emailed });
   } catch (e) {
     return json({ ok: false, error: 'Server error, please try again' }, 500);
