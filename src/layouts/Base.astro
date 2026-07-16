@@ -47,9 +47,11 @@ const { title = seo.title, description = seo.description } = Astro.props;
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Buy tickets">
       <button class="modal-x" type="button" data-close aria-label="Close">&times;</button>
+      <div id="tkForm">
       <p class="modal-eyebrow">Tickets</p>
       <h3 class="modal-title" id="tkVenue">Venue</h3>
       <p class="modal-sub"><span id="tkDate"></span> &middot; <span id="tkCity"></span></p>
+      <p class="modal-addr" id="tkAddr"></p>
       <p class="modal-note">Secure checkout stays right here on the site, powered by Square.</p>
       <p class="tk-amount" id="tkAmount"></p>
       <div class="tk-fields" id="tkFields">
@@ -61,6 +63,14 @@ const { title = seo.title, description = seo.description } = Astro.props;
       <button id="tkPayBtn" class="btn btn-solid modal-cta" type="button">Pay now</button>
       <p id="tkStatus" class="tk-status" role="status" aria-live="polite"></p>
       <a id="tkExternal" class="tk-alt" href="#" target="_blank" rel="noopener" style="display:none">Tickets via venue</a>
+      </div>
+      <div class="tk-done" id="tkDone" hidden>
+        <p class="modal-eyebrow">Confirmed</p>
+        <h3 class="modal-title">You&#39;re in</h3>
+        <p class="tk-done-num" id="tkDoneNum"></p>
+        <p class="tk-done-msg" id="tkDoneMsg">Check your email for your ticket. See you on the floor.</p>
+        <button class="btn btn-solid modal-cta" type="button" data-close>Done</button>
+      </div>
     </div>
   </div>
 
@@ -91,9 +101,10 @@ const { title = seo.title, description = seo.description } = Astro.props;
 
   <script is:inline>
     (function () {
+      if(location.protocol==='http:'){ location.replace('https://'+location.host+location.pathname+location.search+location.hash); return; }
       var loader=document.getElementById('loader'), vid=document.getElementById('loaderVid'), closed=false;
       function closeLoader(){ if(closed)return; closed=true; loader.classList.add('is-done'); setTimeout(function(){loader.remove();},900); }
-      if(loader&&vid){ vid.addEventListener('ended',closeLoader); vid.addEventListener('error',closeLoader); loader.addEventListener('click',closeLoader); setTimeout(closeLoader,6000); if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){setTimeout(closeLoader,400);} var started=false; vid.addEventListener('playing',function(){started=true;}); vid.addEventListener('timeupdate',function(){ if(vid.currentTime>0.05) started=true; }); function playCheck(){ if(closed) return; if(vid.paused && !started){ closeLoader(); } } try{ var p=vid.play&&vid.play(); if(p&&p.then){ p.then(function(){ setTimeout(playCheck,150); }).catch(function(){ closeLoader(); }); } else { setTimeout(playCheck,500); } }catch(e){ closeLoader(); } setTimeout(playCheck,700); }
+      if(loader&&vid){ vid.addEventListener('ended',closeLoader); vid.addEventListener('error',closeLoader); loader.addEventListener('click',closeLoader); setTimeout(closeLoader,5000); if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){setTimeout(closeLoader,300);} var started=false; function reveal(){ if(!started){ started=true; loader.classList.add('vid-live'); } } vid.addEventListener('playing',function(){ if(vid.currentTime>0) reveal(); }); vid.addEventListener('timeupdate',function(){ if(vid.currentTime>0.05) reveal(); }); function bail(){ if(!closed && !started) closeLoader(); } try{ var p=vid.play&&vid.play(); if(p&&p.catch){ p.catch(function(){ closeLoader(); }); } }catch(e){ closeLoader(); } setTimeout(bail,650); }
 
       var header=document.getElementById('siteHeader');
       var themed=document.querySelectorAll('main [data-theme], footer[data-theme]');
@@ -139,14 +150,16 @@ const { title = seo.title, description = seo.description } = Astro.props;
       function ensurePayments(){ if(!sqPayments&&sqCfg&&window.Square){ try{ sqPayments=window.Square.payments(sqCfg.appId, sqCfg.locationId); }catch(e){ sqPayments=null; } } return sqPayments; }
       function money(n,c){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'AUD'}).format(n); }catch(e){ return (c||'AUD')+' '+n.toFixed(2); } }
 
-      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='';
+      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='', tkAddrVal='';
       async function initTicketCard(){ if(tkReady) return; var p=ensurePayments(); if(!p) return; try{ tkCard=await p.card(); await tkCard.attach('#card-container'); tkReady=true; }catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; } }
       document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
         document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
         document.getElementById('tkDate').textContent=b.getAttribute('data-date')||'';
         document.getElementById('tkCity').textContent=b.getAttribute('data-city')||'';
         tkLabel=b.getAttribute('data-venue')||'Show';
-        tkVenueVal=tkLabel; tkCityVal=b.getAttribute('data-city')||''; tkDateVal=b.getAttribute('data-date')||''; tkDoorsVal=b.getAttribute('data-doors')||'';
+        tkVenueVal=tkLabel; tkCityVal=b.getAttribute('data-city')||''; tkDateVal=b.getAttribute('data-date')||''; tkDoorsVal=b.getAttribute('data-doors')||''; tkAddrVal=b.getAttribute('data-address')||'';
+        document.getElementById('tkAddr').textContent=tkAddrVal;
+        document.getElementById('tkForm').style.display=''; document.getElementById('tkDone').hidden=true; document.getElementById('tkPayBtn').style.display='';
         tkAmt=parseFloat(b.getAttribute('data-amount')||'')||0;
         var amtEl=document.getElementById('tkAmount'), payBtn=document.getElementById('tkPayBtn'), st=document.getElementById('tkStatus'), cardBox=document.getElementById('card-container');
         st.textContent='';
@@ -168,9 +181,9 @@ const { title = seo.title, description = seo.description } = Astro.props;
         try{
           var res=await tkCard.tokenize();
           if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; tkPayBtn.disabled=false; return; }
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal } }) });
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal, address:tkAddrVal } }) });
           var data=await r.json();
-          if(r.ok&&data.ok){ st.textContent = data.emailed ? ('Payment complete. Ticket '+data.ticketNo+' emailed to '+em+'.') : ('Payment complete. Ticket '+(data.ticketNo||'')+'.'); tkPayBtn.style.display='none'; }
+          if(r.ok&&data.ok){ var num=data.ticketNo||''; var dn=document.getElementById('tkDoneNum'); if(dn) dn.textContent = num ? ('Ticket '+num) : ''; var dm=document.getElementById('tkDoneMsg'); if(dm) dm.textContent = data.emailed ? ('Check your email at '+em+' for your ticket. See you on the floor.') : ('Your ticket number is '+num+'. See you on the floor.'); var tf=document.getElementById('tkForm'); if(tf) tf.style.display='none'; var td=document.getElementById('tkDone'); if(td) td.hidden=false; }
           else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; tkPayBtn.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
       }); }

@@ -130,7 +130,10 @@ a:hover { color: inherit; }
   position: relative;
   width: min(760px, 86vw);
   mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity .3s ease;
 }
+#loader.vid-live video { opacity: 1; }
 
 /* iOS Safari (esp. Low Power Mode) overlays a play button when autoplay is blocked.
    Hide every media-control affordance and let taps fall through to the loader. */
@@ -601,3 +604,12 @@ body.menu-open { overflow: hidden; }
 .tk-fields { display:flex; flex-direction:column; gap:8px; margin:12px 0 14px; }
 .tk-fields input { width:100%; box-sizing:border-box; border:1px solid #cfcfcf; border-radius:8px; padding:10px 12px; font:400 14px/1.3 var(--font-brand); color:#0b0b0b; background:#fff; }
 .tk-fields input:focus { outline:none; border-color:#0b0b0b; }
+
+
+/* ticket confirmation + venue address */
+.modal-addr { font-size: 13px; color: #777; margin-top: 6px; }
+.tk-done { text-align: center; padding: 14px 6px 6px; }
+.tk-done .modal-eyebrow { color: #8a8a8a; }
+.tk-done-num { font-family: var(--font-brand); font-size: clamp(20px, 3vw, 26px); letter-spacing: 2px; color: #111; margin-top: 16px; }
+.tk-done-msg { font-size: 14px; color: #555; line-height: 1.55; max-width: 340px; margin: 12px auto 0; }
+.tk-done .modal-cta { margin-top: 24px; }

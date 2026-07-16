@@ -42,7 +42,8 @@ function ticketEmailHtml(o) {
     + '<tr><td style="padding:18px 32px 0;"><div style="border-top:1px solid #222222;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
     + '<tr><td align="center" style="padding:22px 32px 0;">'
     + '<div style="font-size:30px;font-weight:800;letter-spacing:1px;color:#ffffff;text-transform:uppercase;line-height:1.08;">' + esc(o.venue) + '</div>'
-    + (o.city ? '<div style="font-size:13px;font-weight:bold;letter-spacing:2px;color:#bdbdbd;text-transform:uppercase;margin-top:10px;">' + esc(o.city) + '</div>' : '') + '</td></tr>'
+    + (o.city ? '<div style="font-size:13px;font-weight:bold;letter-spacing:2px;color:#bdbdbd;text-transform:uppercase;margin-top:10px;">' + esc(o.city) + '</div>' : '')
+    + (o.address ? '<div style="font-size:12px;color:#8a8a8a;margin-top:8px;">' + esc(o.address) + '</div>' : '') + '</td></tr>'
     + '<tr><td style="padding:22px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
     + '<td align="center" width="50%" style="border-right:1px solid #222222;padding:2px 6px;"><div style="font-size:11px;font-weight:bold;letter-spacing:4px;color:#8a8a8a;">DATE</div>'
     + '<div style="font-size:19px;font-weight:800;color:#ffffff;margin-top:6px;">' + esc(o.date || 'TBA') + '</div></td>'
@@ -183,7 +184,7 @@ async function handlePay(request, env, ctx) {
       const ev = event || {};
       const html = ticketEmailHtml({
         ticketNo: ticketNo, name: buyerName || '',
-        venue: ev.venue || 'Modulr show', city: ev.city || '', date: ev.date || '', doors: ev.doors || '',
+        venue: ev.venue || 'Modulr show', city: ev.city || '', date: ev.date || '', doors: ev.doors || '', address: ev.address || '',
         amount: money(amount, payCurrency)
       });
       emailed = await sendEmail(env, buyerEmail, 'Your Modulr ticket ' + ticketNo, html);
