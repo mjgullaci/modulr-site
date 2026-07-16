@@ -54,6 +54,7 @@ const { title = seo.title, description = seo.description } = Astro.props;
       <p class="modal-addr" id="tkAddr"></p>
       <p class="modal-note">Secure checkout stays right here on the site, powered by Square.</p>
       <p class="tk-amount" id="tkAmount"></p>
+      <p class="tk-left" id="tkLeft"></p>
       <div class="tk-fields" id="tkFields">
         <input id="tkFirst" type="text" placeholder="First name" autocomplete="given-name" />
         <input id="tkLast" type="text" placeholder="Last name" autocomplete="family-name" />
@@ -150,7 +151,8 @@ const { title = seo.title, description = seo.description } = Astro.props;
       function ensurePayments(){ if(!sqPayments&&sqCfg&&window.Square){ try{ sqPayments=window.Square.payments(sqCfg.appId, sqCfg.locationId); }catch(e){ sqPayments=null; } } return sqPayments; }
       function money(n,c){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'AUD'}).format(n); }catch(e){ return (c||'AUD')+' '+n.toFixed(2); } }
 
-      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='', tkAddrVal='';
+      var ticketLeft={};
+      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='', tkAddrVal='', tkEventIdVal='';
       async function initTicketCard(){ if(tkReady) return; var p=ensurePayments(); if(!p) return; try{ tkCard=await p.card(); await tkCard.attach('#card-container'); tkReady=true; }catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; } }
       document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
         document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
@@ -159,6 +161,8 @@ const { title = seo.title, description = seo.description } = Astro.props;
         tkLabel=b.getAttribute('data-venue')||'Show';
         tkVenueVal=tkLabel; tkCityVal=b.getAttribute('data-city')||''; tkDateVal=b.getAttribute('data-date')||''; tkDoorsVal=b.getAttribute('data-doors')||''; tkAddrVal=b.getAttribute('data-address')||'';
         document.getElementById('tkAddr').textContent=tkAddrVal;
+        tkEventIdVal=b.getAttribute('data-event-id')||'';
+        var _lv=ticketLeft[tkEventIdVal]; var _tl=document.getElementById('tkLeft'); if(_tl){ _tl.textContent=(_lv!==undefined&&_lv!==null&&_lv<=10&&_lv>0)?('Only '+_lv+' left'):''; }
         document.getElementById('tkForm').style.display=''; document.getElementById('tkDone').hidden=true; document.getElementById('tkPayBtn').style.display='';
         tkAmt=parseFloat(b.getAttribute('data-amount')||'')||0;
         var amtEl=document.getElementById('tkAmount'), payBtn=document.getElementById('tkPayBtn'), st=document.getElementById('tkStatus'), cardBox=document.getElementById('card-container');
@@ -181,9 +185,9 @@ const { title = seo.title, description = seo.description } = Astro.props;
         try{
           var res=await tkCard.tokenize();
           if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; tkPayBtn.disabled=false; return; }
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal, address:tkAddrVal } }) });
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal, address:tkAddrVal, id:tkEventIdVal } }) });
           var data=await r.json();
-          if(r.ok&&data.ok){ var num=data.ticketNo||''; var dn=document.getElementById('tkDoneNum'); if(dn) dn.textContent = num ? ('Ticket '+num) : ''; var dm=document.getElementById('tkDoneMsg'); if(dm) dm.textContent = data.emailed ? ('Check your email at '+em+' for your ticket. See you on the floor.') : ('Your ticket number is '+num+'. See you on the floor.'); var tf=document.getElementById('tkForm'); if(tf) tf.style.display='none'; var td=document.getElementById('tkDone'); if(td) td.hidden=false; }
+          if(r.ok&&data.ok){ var num=data.ticketNo||''; var dn=document.getElementById('tkDoneNum'); if(dn) dn.textContent = num ? ('Ticket '+num) : ''; var dm=document.getElementById('tkDoneMsg'); if(dm) dm.textContent = data.emailed ? ('Check your email at '+em+' for your ticket. See you on the floor.') : ('Your ticket number is '+num+'. See you on the floor.'); var tf=document.getElementById('tkForm'); if(tf) tf.style.display='none'; var td=document.getElementById('tkDone'); if(td) td.hidden=false; if(tkEventIdVal && data.left!==undefined && data.left!==null){ ticketLeft[tkEventIdVal]=data.left; renderShowLeft(tkEventIdVal); } }
           else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; tkPayBtn.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
       }); }
@@ -230,6 +234,22 @@ const { title = seo.title, description = seo.description } = Astro.props;
           else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; pmBuy.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; pmBuy.disabled=false; }
       }); }
+      function renderShowLeft(evId){
+        var left=ticketLeft[evId];
+        document.querySelectorAll('.ticket-btn[data-event-id="'+evId+'"]').forEach(function(b){
+          var row=b.closest('.show-row'); if(!row) return;
+          var ex=row.querySelector('.show-left');
+          if(left!==null&&left!==undefined&&left<=0){ b.textContent='Sold Out'; b.disabled=true; b.classList.add('is-soldout'); if(ex) ex.remove(); }
+          else if(left!==null&&left!==undefined&&left<=10){ if(!ex){ ex=document.createElement('span'); ex.className='show-left'; (row.querySelector('.show-venue-cell')||row).appendChild(ex); } ex.textContent='Only '+left+' left'; }
+        });
+      }
+      document.querySelectorAll('.ticket-btn[data-event-id]').forEach(function(b){
+        var evId=b.getAttribute('data-event-id'); if(!evId) return;
+        fetch('/api/tickets?event='+encodeURIComponent(evId)).then(function(r){return r.json();}).then(function(d){
+          if(!d||d.left===null||typeof d.left==='undefined') return;
+          ticketLeft[evId]=d.left; renderShowLeft(evId);
+        }).catch(function(){});
+      });
     })();
   </script>
 </body>

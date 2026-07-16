@@ -613,3 +613,9 @@ body.menu-open { overflow: hidden; }
 .tk-done-num { font-family: var(--font-brand); font-size: clamp(20px, 3vw, 26px); letter-spacing: 2px; color: #111; margin-top: 16px; }
 .tk-done-msg { font-size: 14px; color: #555; line-height: 1.55; max-width: 340px; margin: 12px auto 0; }
 .tk-done .modal-cta { margin-top: 24px; }
+
+
+/* ticket cap: low-stock + sold out */
+.show-left { display:block; margin-top:6px; font:700 clamp(10px,.9vw,12px)/1 var(--font-mono); letter-spacing:.12em; text-transform:uppercase; }
+.tk-left { font:700 12px var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:#111; margin:2px 0 10px; }
+.btn.is-soldout, .ticket-btn.is-soldout { opacity:.45; pointer-events:none; }

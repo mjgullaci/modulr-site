@@ -8,6 +8,9 @@ export default {
     if (request.method === 'POST' && url.pathname === '/api/subscribe') {
       return handleSubscribe(request, env);
     }
+    if (request.method === 'GET' && url.pathname === '/api/tickets') {
+      return handleTickets(url, env);
+    }
     const res = await env.ASSETS.fetch(request);
     try {
       const ct = res.headers.get('content-type') || '';
@@ -29,6 +32,20 @@ function money(cents, cur) { return (cur || 'AUD') + ' ' + (Math.round(cents) / 
 function refNo(prefix) {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
   return prefix + String(n).padStart(6, '0');
+}
+
+// Ticket caps per event id (server-authoritative; uncapped if not listed).
+const EVENT_CAPS = { 'modus-2026-08-15': 60 };
+function eventStub(env, id) { return env.TICKETS.get(env.TICKETS.idFromName(id)); }
+async function handleTickets(url, env) {
+  try {
+    const evId = url.searchParams.get('event') || '';
+    const cap = EVENT_CAPS[evId] || 0;
+    if (!cap) return json({ event: evId, cap: 0, left: null });
+    const r = await eventStub(env, evId).fetch('https://do/?op=get&cap=' + cap);
+    const d = await r.json();
+    return json({ event: evId, cap: cap, sold: d.sold, left: d.left });
+  } catch (e) { return json({ cap: 0, left: null }); }
 }
 
 function ticketEmailHtml(o) {
@@ -140,12 +157,29 @@ async function mcAddQuietly(env, email, name) {
 }
 
 async function handlePay(request, env, ctx) {
+  let reserved = false, evId = '';
   try {
     const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item } = await request.json();
     if (!sourceId || !amount) return json({ ok: false, error: 'Missing payment details' }, 400);
 
     const token = env.SQUARE_ACCESS_TOKEN;
     if (!token) return json({ ok: false, error: 'Checkout is not switched on yet' }, 503);
+
+    const ev = event || {};
+    evId = (kind === 'ticket' && ev.id) ? String(ev.id) : '';
+    const cap = EVENT_CAPS[evId] || 0;
+
+    // Reserve a seat before charging (atomic, cannot oversell). Capped events only.
+    if (cap > 0) {
+      try {
+        const rr = await eventStub(env, evId).fetch('https://do/?op=reserve&cap=' + cap);
+        const rd = await rr.json();
+        if (!rd.ok) return json({ ok: false, soldOut: true, error: 'Sorry, this show is sold out.' }, 409);
+        reserved = true;
+      } catch (e) {
+        return json({ ok: false, error: 'Could not confirm availability, please try again.' }, 503);
+      }
+    }
 
     const base = env.SQUARE_ENV === 'production' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
     const locationId = env.SQUARE_LOCATION_ID || '';
@@ -173,15 +207,14 @@ async function handlePay(request, env, ctx) {
     });
     const data = await resp.json();
     if (!resp.ok) {
+      if (reserved) { try { await eventStub(env, evId).fetch('https://do/?op=release'); } catch (e) {} reserved = false; }
       const msg = data && data.errors && data.errors[0] ? (data.errors[0].detail || data.errors[0].code) : 'Payment failed';
       return json({ ok: false, error: msg }, 400);
     }
 
-    // Payment succeeded. Mint a reference and email it.
     let ticketNo = null, orderNo = null, emailed = false;
     if (kind === 'ticket') {
       ticketNo = refNo('MOD');
-      const ev = event || {};
       const html = ticketEmailHtml({
         ticketNo: ticketNo, name: buyerName || '',
         venue: ev.venue || 'Modulr show', city: ev.city || '', date: ev.date || '', doors: ev.doors || '', address: ev.address || '',
@@ -202,8 +235,38 @@ async function handlePay(request, env, ctx) {
     if (buyerEmail && String(buyerEmail).indexOf('@') > 0 && ctx && ctx.waitUntil) {
       ctx.waitUntil(mcAddQuietly(env, buyerEmail, buyerName));
     }
-    return json({ ok: true, id: data.payment && data.payment.id, ticketNo: ticketNo, orderNo: orderNo, emailed: emailed });
+    let left = null;
+    if (kind === 'ticket' && (EVENT_CAPS[evId] || 0) > 0) {
+      try { const gr = await eventStub(env, evId).fetch('https://do/?op=get&cap=' + (EVENT_CAPS[evId] || 0)); const gd = await gr.json(); left = gd.left; } catch (e) {}
+    }
+    return json({ ok: true, id: data.payment && data.payment.id, ticketNo: ticketNo, orderNo: orderNo, emailed: emailed, left: left });
   } catch (e) {
+    if (reserved && evId) { try { await eventStub(env, evId).fetch('https://do/?op=release'); } catch (e2) {} }
     return json({ ok: false, error: 'Server error, please try again' }, 500);
+  }
+}
+
+export class TicketCounter {
+  constructor(state, env) { this.state = state; this.env = env; }
+  async fetch(request) {
+    const url = new URL(request.url);
+    const op = url.searchParams.get('op') || 'get';
+    const cap = parseInt(url.searchParams.get('cap') || '0', 10);
+    let sold = (await this.state.storage.get('sold')) || 0;
+    if (op === 'reserve') {
+      if (cap > 0 && sold >= cap) return json({ ok: false, soldOut: true, sold: sold, left: 0 });
+      sold = sold + 1; await this.state.storage.put('sold', sold);
+      return json({ ok: true, sold: sold, left: Math.max(0, cap - sold) });
+    }
+    if (op === 'release') {
+      sold = Math.max(0, sold - 1); await this.state.storage.put('sold', sold);
+      return json({ ok: true, sold: sold });
+    }
+    if (op === 'set') {
+      const v = parseInt(url.searchParams.get('value') || '0', 10);
+      sold = Math.max(0, v); await this.state.storage.put('sold', sold);
+      return json({ ok: true, sold: sold });
+    }
+    return json({ ok: true, sold: sold, left: cap > 0 ? Math.max(0, cap - sold) : null });
   }
 }
