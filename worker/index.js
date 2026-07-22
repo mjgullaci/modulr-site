@@ -68,7 +68,7 @@ function ticketEmailHtml(o) {
     + '<div style="font-size:19px;font-weight:800;color:#ffffff;margin-top:6px;">' + esc(o.doors || 'TBA') + '</div></td>'
     + '</tr></table></td></tr>'
     + '<tr><td style="padding:24px 22px 0;"><div style="border-top:2px dashed #3a3a3a;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
-    + '<tr><td align="center" style="padding:20px 32px 0;"><div style="font-size:11px;font-weight:bold;letter-spacing:5px;color:#8a8a8a;">ADMIT ONE</div>'
+    + '<tr><td align="center" style="padding:20px 32px 0;"><div style="font-size:11px;font-weight:bold;letter-spacing:5px;color:#8a8a8a;">ADMIT ' + ((o.qty && o.qty > 1) ? esc(o.qty) : 'ONE') + '</div>'
     + '<div style="font-size:30px;font-weight:800;letter-spacing:6px;color:#ffffff;margin-top:10px;font-family:Courier New,Courier,monospace;">' + esc(o.ticketNo) + '</div></td></tr>'
     + '<tr><td style="padding:22px 32px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
     + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;">NAME</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;">' + esc(o.name) + '</td></tr>'
@@ -157,9 +157,10 @@ async function mcAddQuietly(env, email, name) {
 }
 
 async function handlePay(request, env, ctx) {
-  let reserved = false, evId = '';
+  let reserved = false, evId = '', qty = 1;
   try {
-    const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item } = await request.json();
+    const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item, quantity } = await request.json();
+    qty = Math.max(1, Math.min(10, parseInt(quantity || 1, 10) || 1));
     if (!sourceId || !amount) return json({ ok: false, error: 'Missing payment details' }, 400);
 
     const token = env.SQUARE_ACCESS_TOKEN;
@@ -172,9 +173,9 @@ async function handlePay(request, env, ctx) {
     // Reserve a seat before charging (atomic, cannot oversell). Capped events only.
     if (cap > 0) {
       try {
-        const rr = await eventStub(env, evId).fetch('https://do/?op=reserve&cap=' + cap);
+        const rr = await eventStub(env, evId).fetch('https://do/?op=reserve&cap=' + cap + '&n=' + qty);
         const rd = await rr.json();
-        if (!rd.ok) return json({ ok: false, soldOut: true, error: 'Sorry, this show is sold out.' }, 409);
+        if (!rd.ok) { const lft = (rd.left != null) ? rd.left : 0; return json({ ok: false, soldOut: true, left: lft, error: lft > 0 ? ('Only ' + lft + ' ticket' + (lft === 1 ? '' : 's') + ' left for this show.') : 'Sorry, this show is sold out.' }, 409); }
         reserved = true;
       } catch (e) {
         return json({ ok: false, error: 'Could not confirm availability, please try again.' }, 503);
@@ -207,7 +208,7 @@ async function handlePay(request, env, ctx) {
     });
     const data = await resp.json();
     if (!resp.ok) {
-      if (reserved) { try { await eventStub(env, evId).fetch('https://do/?op=release'); } catch (e) {} reserved = false; }
+      if (reserved) { try { await eventStub(env, evId).fetch('https://do/?op=release&n=' + qty); } catch (e) {} reserved = false; }
       const msg = data && data.errors && data.errors[0] ? (data.errors[0].detail || data.errors[0].code) : 'Payment failed';
       return json({ ok: false, error: msg }, 400);
     }
@@ -217,7 +218,7 @@ async function handlePay(request, env, ctx) {
       ticketNo = refNo('MOD');
       const html = ticketEmailHtml({
         ticketNo: ticketNo, name: buyerName || '',
-        venue: ev.venue || 'Modulr show', city: ev.city || '', date: ev.date || '', doors: ev.doors || '', address: ev.address || '',
+        venue: ev.venue || 'Modulr show', city: ev.city || '', date: ev.date || '', doors: ev.doors || '', address: ev.address || '', qty: qty,
         amount: money(amount, payCurrency)
       });
       emailed = await sendEmail(env, buyerEmail, 'Your Modulr ticket ' + ticketNo, html);
@@ -241,7 +242,7 @@ async function handlePay(request, env, ctx) {
     }
     return json({ ok: true, id: data.payment && data.payment.id, ticketNo: ticketNo, orderNo: orderNo, emailed: emailed, left: left });
   } catch (e) {
-    if (reserved && evId) { try { await eventStub(env, evId).fetch('https://do/?op=release'); } catch (e2) {} }
+    if (reserved && evId) { try { await eventStub(env, evId).fetch('https://do/?op=release&n=' + qty); } catch (e2) {} }
     return json({ ok: false, error: 'Server error, please try again' }, 500);
   }
 }
@@ -254,12 +255,14 @@ export class TicketCounter {
     const cap = parseInt(url.searchParams.get('cap') || '0', 10);
     let sold = (await this.state.storage.get('sold')) || 0;
     if (op === 'reserve') {
-      if (cap > 0 && sold >= cap) return json({ ok: false, soldOut: true, sold: sold, left: 0 });
-      sold = sold + 1; await this.state.storage.put('sold', sold);
+      var n = Math.max(1, parseInt(url.searchParams.get('n') || '1', 10) || 1);
+      if (cap > 0 && sold + n > cap) return json({ ok: false, soldOut: true, sold: sold, left: Math.max(0, cap - sold) });
+      sold = sold + n; await this.state.storage.put('sold', sold);
       return json({ ok: true, sold: sold, left: Math.max(0, cap - sold) });
     }
     if (op === 'release') {
-      sold = Math.max(0, sold - 1); await this.state.storage.put('sold', sold);
+      var nr = Math.max(1, parseInt(url.searchParams.get('n') || '1', 10) || 1);
+      sold = Math.max(0, sold - nr); await this.state.storage.put('sold', sold);
       return json({ ok: true, sold: sold });
     }
     if (op === 'set') {

@@ -54,6 +54,15 @@ const { title = seo.title, description = seo.description } = Astro.props;
       <p class="modal-addr" id="tkAddr"></p>
       <p class="modal-note">Secure checkout stays right here on the site, powered by Square.</p>
       <p class="tk-amount" id="tkAmount"></p>
+      <div class="tk-qty" id="tkQtyRow">
+        <span class="tk-qty-label">Number of tickets</span>
+        <div class="tk-qty-ctrl">
+          <button type="button" class="tk-qty-btn" id="tkQtyMinus" aria-label="Fewer tickets">&minus;</button>
+          <span class="tk-qty-num" id="tkQtyVal">1</span>
+          <button type="button" class="tk-qty-btn" id="tkQtyPlus" aria-label="More tickets">+</button>
+        </div>
+      </div>
+      <p class="tk-total" id="tkTotal"></p>
       <p class="tk-left" id="tkLeft"></p>
       <div class="tk-fields" id="tkFields">
         <input id="tkFirst" type="text" placeholder="First name" autocomplete="given-name" />
@@ -152,7 +161,10 @@ const { title = seo.title, description = seo.description } = Astro.props;
       function money(n,c){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'AUD'}).format(n); }catch(e){ return (c||'AUD')+' '+n.toFixed(2); } }
 
       var ticketLeft={};
-      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='', tkAddrVal='', tkEventIdVal='';
+      var tkCard=null, tkReady=false, tkAmt=0, tkLabel='', tkVenueVal='', tkCityVal='', tkDateVal='', tkDoorsVal='', tkAddrVal='', tkEventIdVal='', tkQty=1;
+      function tkQtyMax(){ var l=ticketLeft[tkEventIdVal]; var lim=(l!==undefined&&l!==null&&l>0)?Math.min(10,l):10; return Math.max(1,lim); }
+      function tkUpdateTotal(){ var mx=tkQtyMax(); if(tkQty>mx) tkQty=mx; if(tkQty<1) tkQty=1; var vEl=document.getElementById('tkQtyVal'); if(vEl) vEl.textContent=tkQty; var tot=tkAmt*tkQty; var tEl=document.getElementById('tkTotal'); if(tEl) tEl.textContent=tkQty>1?('Total '+money(tot,CUR)+' for '+tkQty+' tickets'):''; var pb=document.getElementById('tkPayBtn'); if(pb&&sqCfg&&tkAmt>0) pb.textContent='Pay '+money(tot,CUR); var mns=document.getElementById('tkQtyMinus'), pls=document.getElementById('tkQtyPlus'); if(mns) mns.disabled=(tkQty<=1); if(pls) pls.disabled=(tkQty>=mx); }
+      (function(){ var mns=document.getElementById('tkQtyMinus'), pls=document.getElementById('tkQtyPlus'); if(mns) mns.addEventListener('click',function(){ if(tkQty>1){ tkQty--; tkUpdateTotal(); } }); if(pls) pls.addEventListener('click',function(){ if(tkQty<tkQtyMax()){ tkQty++; tkUpdateTotal(); } }); })();
       async function initTicketCard(){ if(tkReady) return; var p=ensurePayments(); if(!p) return; try{ tkCard=await p.card(); await tkCard.attach('#card-container'); tkReady=true; }catch(e){ var s=document.getElementById('tkStatus'); if(s) s.textContent='Card form could not load.'; } }
       document.querySelectorAll('.ticket-btn').forEach(function(b){ b.addEventListener('click',function(){
         document.getElementById('tkVenue').textContent=b.getAttribute('data-venue')||'Show';
@@ -170,7 +182,7 @@ const { title = seo.title, description = seo.description } = Astro.props;
         var url=b.getAttribute('data-url')||'#', ext=document.getElementById('tkExternal');
         if(url&&url!=='#'){ ext.href=url; ext.style.display=''; } else { ext.style.display='none'; }
         openModal(ticketModal);
-        if(sqCfg && tkAmt>0){ amtEl.textContent=money(tkAmt,CUR)+' per ticket'; payBtn.style.display=''; cardBox.style.display=''; payBtn.disabled=false; initTicketCard(); }
+        if(sqCfg && tkAmt>0){ amtEl.textContent=money(tkAmt,CUR)+' per ticket'; tkQty=1; tkUpdateTotal(); payBtn.style.display=''; cardBox.style.display=''; payBtn.disabled=false; initTicketCard(); }
         else { amtEl.textContent=''; payBtn.style.display='none'; cardBox.style.display='none'; if(!sqCfg) st.textContent='Checkout is being switched on. Use the venue link below for now.'; }
       });});
       var tkPayBtn=document.getElementById('tkPayBtn');
@@ -185,10 +197,10 @@ const { title = seo.title, description = seo.description } = Astro.props;
         try{
           var res=await tkCard.tokenize();
           if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; tkPayBtn.disabled=false; return; }
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*100), currency:CUR, note:'Ticket: '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal, address:tkAddrVal, id:tkEventIdVal } }) });
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(tkAmt*tkQty*100), currency:CUR, quantity:tkQty, note:'Tickets x'+tkQty+': '+tkLabel+' | '+fn+' '+ln, buyerEmail:em, buyerName:fn+' '+ln, kind:'ticket', event:{ venue:tkVenueVal, city:tkCityVal, date:tkDateVal, doors:tkDoorsVal, address:tkAddrVal, id:tkEventIdVal } }) });
           var data=await r.json();
-          if(r.ok&&data.ok){ var num=data.ticketNo||''; var dn=document.getElementById('tkDoneNum'); if(dn) dn.textContent = num ? ('Ticket '+num) : ''; var dm=document.getElementById('tkDoneMsg'); if(dm) dm.textContent = data.emailed ? ('Check your email at '+em+' for your ticket. See you on the floor.') : ('Your ticket number is '+num+'. See you on the floor.'); var tf=document.getElementById('tkForm'); if(tf) tf.style.display='none'; var td=document.getElementById('tkDone'); if(td) td.hidden=false; if(tkEventIdVal && data.left!==undefined && data.left!==null){ ticketLeft[tkEventIdVal]=data.left; renderShowLeft(tkEventIdVal); } }
-          else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; tkPayBtn.disabled=false; }
+          if(r.ok&&data.ok){ var num=data.ticketNo||''; var dn=document.getElementById('tkDoneNum'); if(dn) dn.textContent = num ? ('Ticket '+num) : ''; var dm=document.getElementById('tkDoneMsg'); if(dm) dm.textContent = data.emailed ? ('Check your email at '+em+' for your ticket'+(tkQty>1?'s':'')+'. See you on the floor.') : ('Your ticket number is '+num+'. See you on the floor.'); var tf=document.getElementById('tkForm'); if(tf) tf.style.display='none'; var td=document.getElementById('tkDone'); if(td) td.hidden=false; if(tkEventIdVal && data.left!==undefined && data.left!==null){ ticketLeft[tkEventIdVal]=data.left; renderShowLeft(tkEventIdVal); } }
+          else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; if(data && typeof data.left!=='undefined' && data.left!==null && tkEventIdVal){ ticketLeft[tkEventIdVal]=data.left; renderShowLeft(tkEventIdVal); tkUpdateTotal(); } tkPayBtn.disabled=false; }
         }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
       }); }
 

@@ -619,3 +619,13 @@ body.menu-open { overflow: hidden; }
 .show-left { display:block; margin-top:6px; font:700 clamp(10px,.9vw,12px)/1 var(--font-mono); letter-spacing:.12em; text-transform:uppercase; }
 .tk-left { font:700 12px var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:#111; margin:2px 0 10px; }
 .btn.is-soldout, .ticket-btn.is-soldout { opacity:.45; pointer-events:none; }
+
+
+/* ticket quantity stepper */
+.tk-qty { display:flex; align-items:center; justify-content:space-between; margin:8px 0 4px; }
+.tk-qty-label { font:600 12px var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:#333; }
+.tk-qty-ctrl { display:flex; align-items:center; gap:14px; }
+.tk-qty-btn { width:34px; height:34px; border:1px solid #ccc; background:#fff; border-radius:8px; font-size:20px; line-height:1; cursor:pointer; color:#111; }
+.tk-qty-btn:disabled { opacity:.35; cursor:default; }
+.tk-qty-num { min-width:22px; text-align:center; font:700 18px var(--font-brand); color:#111; }
+.tk-total { font:700 13px var(--font-mono); letter-spacing:.05em; color:#111; margin:2px 0 8px; }
