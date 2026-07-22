@@ -22,5 +22,9 @@ const so = settings.social;
     <a href={s.spotify} title="Spotify" aria-label="Spotify" target="_blank" rel="noopener"><svg><use href="#i-spotify"></use></svg></a>
     <a href={so.instagram} title="Instagram" aria-label="Instagram" target="_blank" rel="noopener"><svg><use href="#i-instagram"></use></svg></a>
   </div>
+  <button class="cart-btn" id="cartBtn" type="button" aria-label="Open cart">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7 7V6a5 5 0 0 1 10 0v1h3.2L21 21H3L3.8 7H7zm2 0h6V6a3 3 0 0 0-6 0v1zM5.68 9l-.53 10h13.7l-.53-10H5.68z"/></svg>
+    <span class="cart-btn-count" id="cartBtnCount" hidden>0</span>
+  </button>
   <button class="burger only-m" id="burger" type="button" aria-label="Menu"><i></i><i></i></button>
 </header>

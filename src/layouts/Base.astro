@@ -95,17 +95,64 @@ const { title = seo.title, description = seo.description } = Astro.props;
           <span class="price" id="pmPrice"></span>
           <p class="modal-label">Size</p>
           <div class="sizes" id="pmSizes"></div>
-          <div class="pm-fields" id="pmFields">
-            <input id="pmBuyerFirst" type="text" placeholder="First name" autocomplete="given-name" />
-            <input id="pmBuyerLast" type="text" placeholder="Last name" autocomplete="family-name" />
-            <input id="pmBuyerEmail" type="email" placeholder="Email" autocomplete="email" />
-            <textarea id="pmBuyerAddr" rows="2" placeholder="Shipping address (street, suburb, state, postcode)"></textarea>
+          <div class="tk-qty" id="pmQtyRow">
+            <span class="tk-qty-label">Quantity</span>
+            <div class="tk-qty-ctrl">
+              <button type="button" class="tk-qty-btn" id="pmQtyMinus" aria-label="Fewer">&minus;</button>
+              <span class="tk-qty-num" id="pmQtyVal">1</span>
+              <button type="button" class="tk-qty-btn" id="pmQtyPlus" aria-label="More">+</button>
+            </div>
           </div>
-          <div id="pm-card-container" class="card-box"></div>
-          <button class="btn btn-solid modal-cta" id="pmBuy" type="button" disabled>Select a size</button>
+          <button class="btn btn-solid modal-cta" id="pmAdd" type="button" disabled>Select a size</button>
+          <button class="cart-view-link" id="pmView" type="button" hidden>View cart</button>
           <p id="pmStatus" class="tk-status" role="status" aria-live="polite"></p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="cartModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Your cart">
+      <button class="modal-x" type="button" data-close aria-label="Close">&times;</button>
+
+      <div id="cartView">
+        <p class="modal-eyebrow">Your cart</p>
+        <h3 class="modal-title">Bag</h3>
+        <p class="cart-empty" id="cartEmpty">Your cart is empty.</p>
+        <div class="cart-lines" id="cartLines"></div>
+        <div class="cart-summary" id="cartSummary" hidden>
+          <span class="cart-summary-label">Subtotal</span>
+          <span class="cart-summary-val" id="cartSubtotal"></span>
+        </div>
+        <button class="btn btn-solid modal-cta" id="cartCheckout" type="button" disabled>Checkout</button>
+        <p class="cart-note" id="cartNote" hidden>Shipping across Australia. Secure checkout stays right here, powered by Square.</p>
+      </div>
+
+      <div id="checkoutView" hidden>
+        <button type="button" class="cart-back" id="cartBack">&lsaquo; Back to cart</button>
+        <p class="modal-eyebrow">Checkout</p>
+        <div class="cart-mini" id="cartMini"></div>
+        <p class="tk-total" id="coTotal"></p>
+        <div class="tk-fields">
+          <input id="coFirst" type="text" placeholder="First name" autocomplete="given-name" />
+          <input id="coLast" type="text" placeholder="Last name" autocomplete="family-name" />
+          <input id="coEmail" type="email" placeholder="Email" autocomplete="email" />
+          <textarea id="coAddr" rows="2" placeholder="Shipping address (street, suburb, state, postcode)"></textarea>
+        </div>
+        <div id="cart-card-container" class="card-box"></div>
+        <button class="btn btn-solid modal-cta" id="coPay" type="button">Pay</button>
+        <p id="coStatus" class="tk-status" role="status" aria-live="polite"></p>
+      </div>
+
+      <div id="cartDone" hidden class="tk-done">
+        <p class="modal-eyebrow">Confirmed</p>
+        <h3 class="modal-title">Order confirmed</h3>
+        <p class="tk-done-num" id="cartDoneNum"></p>
+        <p class="tk-done-msg" id="cartDoneMsg">Check your email for your confirmation. Thanks for the support.</p>
+        <button class="btn btn-solid modal-cta" type="button" data-close>Done</button>
+      </div>
+
     </div>
   </div>
 
@@ -204,48 +251,153 @@ const { title = seo.title, description = seo.description } = Astro.props;
         }catch(e){ st.textContent='Something went wrong. Please try again.'; tkPayBtn.disabled=false; }
       }); }
 
-      var productModal=document.getElementById('productModal'), pmBuy=document.getElementById('pmBuy');
-      var pmCard=null, pmReady=false, pmSize=null, pmAmt=0, pmName='';
-      async function initStoreCard(){ if(pmReady) return; var p=ensurePayments(); if(!p) return; try{ pmCard=await p.card(); await pmCard.attach('#pm-card-container'); pmReady=true; }catch(e){ var s=document.getElementById('pmStatus'); if(s) s.textContent='Card form could not load.'; } }
-      function pmRefreshBtn(){ if(!sqCfg||!(pmAmt>0)){ pmBuy.disabled=true; pmBuy.textContent='Coming soon'; return; } if(pmSize){ pmBuy.disabled=false; pmBuy.textContent='Pay '+money(pmAmt,CUR); } else { pmBuy.disabled=true; pmBuy.textContent='Select a size'; } }
+      /* ---------- Store cart (merch) ---------- */
+      var CART_KEY='modulrCart';
+      var productModal=document.getElementById('productModal');
+      var cartModal=document.getElementById('cartModal');
+      var cart=[];
+      try{ var _raw=localStorage.getItem(CART_KEY); if(_raw) cart=JSON.parse(_raw)||[]; }catch(e){ cart=[]; }
+      if(!Array.isArray(cart)) cart=[];
+      function cartSave(){ try{ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }catch(e){} }
+      function cartCount(){ var n=0; for(var i=0;i<cart.length;i++) n+=cart[i].qty; return n; }
+      function cartSubtotalCents(){ var c=0; for(var i=0;i<cart.length;i++) c+=cart[i].unit*cart[i].qty; return c; }
+      function slug(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+
+      var cartFab=document.getElementById('cartBtn'), cartFabCount=document.getElementById('cartBtnCount');
+      function renderFab(){ var n=cartCount(); if(cartFabCount){ cartFabCount.textContent=n; cartFabCount.hidden=(n<=0); } }
+
+      function cartAdd(product, size, qty, unit, image){
+        qty=Math.max(1,Math.min(20,parseInt(qty,10)||1));
+        var key=slug(product)+'|'+size;
+        var found=null; for(var i=0;i<cart.length;i++){ if(cart[i].key===key){ found=cart[i]; break; } }
+        if(found){ found.qty=Math.min(20, found.qty+qty); }
+        else { cart.push({ key:key, product:product, size:size, qty:qty, unit:unit, image:image||'' }); }
+        cartSave(); renderFab(); renderCart();
+      }
+      function cartSetQty(key, qty){ for(var i=0;i<cart.length;i++){ if(cart[i].key===key){ cart[i].qty=Math.max(1,Math.min(20,qty)); break; } } cartSave(); renderFab(); renderCart(); }
+      function cartRemove(key){ cart=cart.filter(function(l){ return l.key!==key; }); cartSave(); renderFab(); renderCart(); }
+
+      function renderCart(){
+        var lines=document.getElementById('cartLines'); if(!lines) return;
+        var empty=document.getElementById('cartEmpty'), summary=document.getElementById('cartSummary');
+        var subEl=document.getElementById('cartSubtotal'), note=document.getElementById('cartNote'), coBtn=document.getElementById('cartCheckout');
+        lines.innerHTML='';
+        if(!cart.length){
+          if(empty) empty.hidden=false; if(summary) summary.hidden=true; if(note) note.hidden=true; if(coBtn) coBtn.disabled=true;
+        } else {
+          if(empty) empty.hidden=true; if(summary) summary.hidden=false; if(note) note.hidden=false; if(coBtn) coBtn.disabled=false;
+          cart.forEach(function(l){
+            var row=document.createElement('div'); row.className='cart-line';
+            var art=l.image?('<div class="cart-line-art"><img src="'+l.image+'" alt=""></div>'):'<div class="cart-line-art"></div>';
+            row.innerHTML=art
+              +'<div class="cart-line-main">'
+              +  '<div class="cart-line-title"></div>'
+              +  '<div class="cart-line-sub">Size '+l.size+'</div>'
+              +  '<div class="cart-line-qty">'
+              +    '<button type="button" class="tk-qty-btn cl-minus" aria-label="Fewer">&minus;</button>'
+              +    '<span class="tk-qty-num cl-num">'+l.qty+'</span>'
+              +    '<button type="button" class="tk-qty-btn cl-plus" aria-label="More">+</button>'
+              +  '</div>'
+              +'</div>'
+              +'<div class="cart-line-end">'
+              +  '<div class="cart-line-price">'+money(l.unit*l.qty/100,CUR)+'</div>'
+              +  '<button type="button" class="cart-line-remove" aria-label="Remove">Remove</button>'
+              +'</div>';
+            row.querySelector('.cart-line-title').textContent=l.product;
+            row.querySelector('.cl-minus').addEventListener('click',function(){ cartSetQty(l.key, l.qty-1); });
+            row.querySelector('.cl-plus').addEventListener('click',function(){ cartSetQty(l.key, l.qty+1); });
+            row.querySelector('.cart-line-remove').addEventListener('click',function(){ cartRemove(l.key); });
+            lines.appendChild(row);
+          });
+        }
+        if(subEl) subEl.textContent=money(cartSubtotalCents()/100,CUR);
+        var pv=document.getElementById('pmView'); if(pv){ var n=cartCount(); pv.hidden=(n<=0); pv.textContent='View cart ('+n+') ›'; }
+      }
+
+      /* product modal: size + quantity + add to cart */
+      var pmAdd=document.getElementById('pmAdd'), pmView=document.getElementById('pmView');
+      var pmSize=null, pmAmt=0, pmName='', pmImage='', pmQty=1;
+      function pmUpdateQty(){ if(pmQty<1) pmQty=1; if(pmQty>20) pmQty=20; var v=document.getElementById('pmQtyVal'); if(v) v.textContent=pmQty; var mn=document.getElementById('pmQtyMinus'), pl=document.getElementById('pmQtyPlus'); if(mn) mn.disabled=(pmQty<=1); if(pl) pl.disabled=(pmQty>=20); }
+      (function(){ var mn=document.getElementById('pmQtyMinus'), pl=document.getElementById('pmQtyPlus'); if(mn) mn.addEventListener('click',function(){ if(pmQty>1){ pmQty--; pmUpdateQty(); } }); if(pl) pl.addEventListener('click',function(){ if(pmQty<20){ pmQty++; pmUpdateQty(); } }); })();
+      function pmRefreshBtn(){ if(!(pmAmt>0)){ pmAdd.disabled=true; pmAdd.textContent='Coming soon'; return; } if(pmSize){ pmAdd.disabled=false; pmAdd.textContent='Add to cart'; } else { pmAdd.disabled=true; pmAdd.textContent='Select a size'; } }
       document.querySelectorAll('.buy-btn').forEach(function(b){ b.addEventListener('click',function(){
         pmName=b.getAttribute('data-name')||'Product';
         document.getElementById('pmName').textContent=pmName;
         pmAmt=parseFloat(b.getAttribute('data-price')||'')||0;
         document.getElementById('pmPrice').textContent=pmAmt>0?money(pmAmt,CUR):'Price on request';
-        var img=document.getElementById('pmImg'); img.src=b.getAttribute('data-image')||''; img.alt=pmName;
-        pmSize=null; document.getElementById('pmStatus').textContent='';
+        pmImage=b.getAttribute('data-image')||'';
+        var img=document.getElementById('pmImg'); img.src=pmImage; img.alt=pmName;
+        pmSize=null; pmQty=1; pmUpdateQty(); document.getElementById('pmStatus').textContent='';
         var sizes=[]; try{sizes=JSON.parse(b.getAttribute('data-sizes'));}catch(e){sizes=['S','M','L','XL','XXL'];}
         var box=document.getElementById('pmSizes'); box.innerHTML='';
         sizes.forEach(function(sz){ var el=document.createElement('button'); el.type='button'; el.className='size'; el.textContent=sz;
           el.addEventListener('click',function(){ box.querySelectorAll('.size').forEach(function(x){x.classList.remove('sel');}); el.classList.add('sel'); pmSize=sz; pmRefreshBtn(); });
           box.appendChild(el); });
-        var cardBox=document.getElementById('pm-card-container'), fields=document.getElementById('pmFields');
-        if(sqCfg && pmAmt>0){ cardBox.style.display=''; if(fields) fields.style.display=''; pmBuy.style.display=''; initStoreCard(); }
-        else { cardBox.style.display='none'; if(fields) fields.style.display='none'; }
-        pmRefreshBtn();
-        openModal(productModal);
+        pmRefreshBtn(); renderCart(); openModal(productModal);
       });});
-      if(pmBuy){ pmBuy.addEventListener('click',async function(){
+      if(pmAdd){ pmAdd.addEventListener('click',function(){
+        if(!(pmAmt>0)) return;
         if(!pmSize){ document.getElementById('pmStatus').textContent='Please choose a size.'; return; }
-        if(!pmReady||!pmCard) return;
-        var st=document.getElementById('pmStatus');
-        var fn=(document.getElementById('pmBuyerFirst').value||'').trim();
-        var ln=(document.getElementById('pmBuyerLast').value||'').trim();
-        var em=(document.getElementById('pmBuyerEmail').value||'').trim();
-        var ad=(document.getElementById('pmBuyerAddr').value||'').trim();
-        if(!fn||!ln||em.indexOf('@')<1||!ad){ st.textContent='Please add your name, email and shipping address.'; return; }
-        pmBuy.disabled=true; st.textContent='Processing...';
-        try{
-          var res=await pmCard.tokenize();
-          if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; pmBuy.disabled=false; return; }
-          var note=pmName+' | size '+pmSize+' | '+fn+' '+ln+' | '+ad;
-          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:Math.round(pmAmt*100), currency:CUR, note:note, buyerEmail:em, buyerName:fn+' '+ln, kind:'merch', item:{ product:pmName, size:pmSize, address:ad } }) });
-          var data=await r.json();
-          if(r.ok&&data.ok){ st.textContent = data.emailed ? ('Order confirmed. '+(data.orderNo||'')+' emailed to '+em+'.') : ('Order confirmed'+(data.orderNo?(' '+data.orderNo):'')+'. The band will post it to your address.'); pmBuy.style.display='none'; }
-          else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; pmBuy.disabled=false; }
-        }catch(e){ st.textContent='Something went wrong. Please try again.'; pmBuy.disabled=false; }
+        cartAdd(pmName, pmSize, pmQty, Math.round(pmAmt*100), pmImage);
+        document.getElementById('pmStatus').textContent='Added to cart ✓';
+        pmAdd.textContent='Added ✓'; pmAdd.disabled=true;
+        setTimeout(function(){ pmRefreshBtn(); }, 900);
+        pmQty=1; pmUpdateQty();
       }); }
+      if(pmView){ pmView.addEventListener('click',function(){ closeModal(productModal); showCartView(); openModal(cartModal); renderCart(); }); }
+
+      /* cart drawer + single checkout */
+      if(cartFab){ cartFab.addEventListener('click',function(){ showCartView(); openModal(cartModal); renderCart(); }); }
+      var cartView=document.getElementById('cartView'), checkoutView=document.getElementById('checkoutView'), cartDoneView=document.getElementById('cartDone');
+      function showCartView(){ if(cartView) cartView.hidden=false; if(checkoutView) checkoutView.hidden=true; if(cartDoneView) cartDoneView.hidden=true; }
+      function showCheckoutView(){ if(cartView) cartView.hidden=true; if(checkoutView) checkoutView.hidden=false; if(cartDoneView) cartDoneView.hidden=true; }
+
+      var coCard=null, coReady=false;
+      async function initCartCard(){ if(coReady) return; var p=ensurePayments(); if(!p) return; try{ coCard=await p.card(); await coCard.attach('#cart-card-container'); coReady=true; }catch(e){ var s=document.getElementById('coStatus'); if(s) s.textContent='Card form could not load.'; } }
+      function renderCheckout(){
+        var mini=document.getElementById('cartMini'); if(mini){ mini.innerHTML=''; cart.forEach(function(l){ var r=document.createElement('div'); r.className='cart-mini-row'; var a=document.createElement('span'); a.innerHTML='<em>Size '+l.size+'</em> ×'+l.qty; a.insertBefore(document.createTextNode(l.product+' '), a.firstChild); var bpr=document.createElement('span'); bpr.textContent=money(l.unit*l.qty/100,CUR); r.appendChild(a); r.appendChild(bpr); mini.appendChild(r); }); }
+        var t=document.getElementById('coTotal'); if(t) t.textContent='Total '+money(cartSubtotalCents()/100,CUR);
+        var pay=document.getElementById('coPay'); if(pay&&sqCfg) pay.textContent='Pay '+money(cartSubtotalCents()/100,CUR);
+      }
+      var cartCheckoutBtn=document.getElementById('cartCheckout');
+      if(cartCheckoutBtn){ cartCheckoutBtn.addEventListener('click',function(){
+        if(!cart.length) return;
+        var cs=document.getElementById('coStatus'); if(cs) cs.textContent=''; var cp=document.getElementById('coPay'); if(cp) cp.disabled=false;
+        showCheckoutView(); renderCheckout();
+        if(sqCfg){ initCartCard(); } else if(cs){ cs.textContent='Checkout is being switched on. Please try again soon.'; }
+      }); }
+      var cartBackBtn=document.getElementById('cartBack');
+      if(cartBackBtn){ cartBackBtn.addEventListener('click',function(){ showCartView(); renderCart(); }); }
+
+      var coPay=document.getElementById('coPay');
+      if(coPay){ coPay.addEventListener('click',async function(){
+        if(!cart.length||!coReady||!coCard) return;
+        var st=document.getElementById('coStatus');
+        var fn=(document.getElementById('coFirst').value||'').trim();
+        var ln=(document.getElementById('coLast').value||'').trim();
+        var em=(document.getElementById('coEmail').value||'').trim();
+        var ad=(document.getElementById('coAddr').value||'').trim();
+        if(!fn||!ln||em.indexOf('@')<1||!ad){ st.textContent='Please add your name, email and shipping address.'; return; }
+        coPay.disabled=true; st.textContent='Processing...';
+        try{
+          var res=await coCard.tokenize();
+          if(res.status!=='OK'){ st.textContent=(res.errors&&res.errors[0]&&res.errors[0].message)?res.errors[0].message:'Please check your card details.'; coPay.disabled=false; return; }
+          var items=cart.map(function(l){ return { product:l.product, size:l.size, qty:l.qty, unit:l.unit }; });
+          var noteStr='Order: '+cart.map(function(l){ return l.product+' '+l.size+' x'+l.qty; }).join(', ')+' | '+fn+' '+ln+' | '+ad;
+          var total=cartSubtotalCents();
+          var r=await fetch('/api/pay',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sourceId:res.token, amount:total, currency:CUR, note:noteStr, buyerEmail:em, buyerName:fn+' '+ln, kind:'merch', item:{ address:ad }, items:items }) });
+          var data=await r.json();
+          if(r.ok&&data.ok){
+            var num=data.orderNo||'';
+            var dn=document.getElementById('cartDoneNum'); if(dn) dn.textContent = num ? ('Order '+num) : '';
+            var dm=document.getElementById('cartDoneMsg'); if(dm) dm.textContent = data.emailed ? ('Check your email at '+em+' for your confirmation. The band will post your order to the address you gave.') : ('Your order number is '+num+'. The band will post it to your address.');
+            cart=[]; cartSave(); renderFab();
+            if(cartView) cartView.hidden=true; if(checkoutView) checkoutView.hidden=true; if(cartDoneView) cartDoneView.hidden=false;
+          } else { st.textContent=(data&&data.error)?data.error:'Payment failed. Please try again.'; coPay.disabled=false; }
+        }catch(e){ st.textContent='Something went wrong. Please try again.'; coPay.disabled=false; }
+      }); }
+
+      renderFab(); renderCart();
       function renderShowLeft(evId){
         var left=ticketLeft[evId];
         document.querySelectorAll('.ticket-btn[data-event-id="'+evId+'"]').forEach(function(b){

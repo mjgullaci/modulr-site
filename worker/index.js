@@ -102,6 +102,39 @@ function orderEmailHtml(o) {
     + '</table></body></html>';
 }
 
+function orderEmailHtmlMulti(o) {
+  var logo = 'https://modulrofficial.com/uploads/modulr-wordmark.png';
+  var rows = '';
+  for (var i = 0; i < o.items.length; i++) {
+    var it = o.items[i];
+    rows += '<tr>'
+      + '<td style="font-size:14px;color:#ffffff;padding:10px 0;border-bottom:1px solid #1c1c1c;">' + esc(it.product) + '<span style="color:#8a8a8a;"> &middot; Size ' + esc(it.size) + '</span></td>'
+      + '<td align="center" style="font-size:14px;color:#bdbdbd;padding:10px 0;border-bottom:1px solid #1c1c1c;white-space:nowrap;">&times;' + esc(it.qty) + '</td>'
+      + '<td align="right" style="font-size:14px;color:#ffffff;padding:10px 0;border-bottom:1px solid #1c1c1c;white-space:nowrap;">' + esc(it.line) + '</td>'
+      + '</tr>';
+  }
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+    + '<body style="margin:0;padding:24px 12px;background:#000000;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;margin:0 auto;background:#0b0b0b;border:1px solid #222222;border-radius:16px;">'
+    + '<tr><td align="center" style="padding:34px 32px 0;">'
+    + '<img src="' + logo + '" width="196" alt="MODULR" style="display:block;width:196px;max-width:58%;height:auto;">'
+    + '<div style="font-size:12px;font-weight:bold;letter-spacing:6px;color:#8a8a8a;margin-top:14px;">ORDER CONFIRMED</div></td></tr>'
+    + '<tr><td style="padding:18px 32px 0;"><div style="border-top:1px solid #222222;font-size:0;line-height:0;">&nbsp;</div></td></tr>'
+    + '<tr><td style="padding:22px 32px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+    + '<tr><td colspan="3" style="font-size:11px;font-weight:bold;letter-spacing:4px;color:#8a8a8a;padding-bottom:4px;">ITEMS</td></tr>'
+    + rows
+    + '</table></td></tr>'
+    + '<tr><td align="center" style="padding:22px 32px 0;"><div style="font-size:11px;font-weight:bold;letter-spacing:5px;color:#8a8a8a;">ORDER NUMBER</div>'
+    + '<div style="font-size:28px;font-weight:800;letter-spacing:6px;color:#ffffff;margin-top:10px;font-family:Courier New,Courier,monospace;">' + esc(o.orderNo) + '</div></td></tr>'
+    + '<tr><td style="padding:22px 32px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+    + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;">NAME</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;">' + esc(o.name) + '</td></tr>'
+    + '<tr><td valign="top" style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;padding-top:8px;">SHIP TO</td><td align="right" style="font-size:14px;color:#ffffff;padding-top:8px;">' + esc(o.address) + '</td></tr>'
+    + '<tr><td style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#8a8a8a;padding-top:8px;">PAID</td><td align="right" style="font-size:15px;font-weight:bold;color:#ffffff;padding-top:8px;">' + esc(o.amount) + '</td></tr>'
+    + '</table></td></tr>'
+    + '<tr><td align="center" style="padding:22px 32px 30px;"><div style="font-size:12px;color:#7a7a7a;">The band will post this to the address above. Thanks for the support.</div></td></tr>'
+    + '</table></body></html>';
+}
+
 async function sendEmail(env, to, subject, html) {
   const key = env.RESEND_API_KEY;
   if (!key || !to) return false;
@@ -159,9 +192,24 @@ async function mcAddQuietly(env, email, name) {
 async function handlePay(request, env, ctx) {
   let reserved = false, evId = '', qty = 1;
   try {
-    const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item, quantity } = await request.json();
+    const { sourceId, amount, currency, note, buyerEmail, buyerName, kind, event, item, quantity, items } = await request.json();
     qty = Math.max(1, Math.min(10, parseInt(quantity || 1, 10) || 1));
-    if (!sourceId || !amount) return json({ ok: false, error: 'Missing payment details' }, 400);
+
+    // Merch cart: normalise line items and derive an authoritative total (cents).
+    let merchItems = null, merchTotal = 0;
+    if (kind === 'merch' && Array.isArray(items) && items.length) {
+      merchItems = [];
+      for (const it of items) {
+        if (!it) continue;
+        const q = Math.max(1, Math.min(20, parseInt(it.qty, 10) || 1));
+        const u = Math.max(0, Math.round(Number(it.unit) || 0));
+        merchItems.push({ product: String(it.product || 'Modulr merch'), size: String(it.size || ''), qty: q, unit: u });
+        merchTotal += u * q;
+      }
+      if (!merchItems.length) merchItems = null;
+    }
+    const chargeAmount = merchTotal > 0 ? merchTotal : Math.round(amount);
+    if (!sourceId || !chargeAmount) return json({ ok: false, error: 'Missing payment details' }, 400);
 
     const token = env.SQUARE_ACCESS_TOKEN;
     if (!token) return json({ ok: false, error: 'Checkout is not switched on yet' }, 503);
@@ -195,7 +243,7 @@ async function handlePay(request, env, ctx) {
     const body = {
       source_id: sourceId,
       idempotency_key: crypto.randomUUID(),
-      amount_money: { amount: Math.round(amount), currency: payCurrency },
+      amount_money: { amount: chargeAmount, currency: payCurrency },
       location_id: locationId,
       note: note ? String(note).slice(0, 480) : 'Modulr'
     };
@@ -224,13 +272,20 @@ async function handlePay(request, env, ctx) {
       emailed = await sendEmail(env, buyerEmail, 'Your Modulr ticket ' + ticketNo, html);
     } else if (kind === 'merch') {
       orderNo = refNo('ORD');
-      const it = item || {};
-      const html = orderEmailHtml({
-        orderNo: orderNo, name: buyerName || '',
-        product: it.product || 'Modulr merch', size: it.size || '', address: it.address || '',
-        amount: money(amount, payCurrency)
-      });
-      emailed = await sendEmail(env, buyerEmail, 'Your Modulr order ' + orderNo, html);
+      const shipTo = (item && item.address) || '';
+      if (merchItems) {
+        const disp = merchItems.map(function (it) { return { product: it.product, size: it.size, qty: it.qty, line: money(it.unit * it.qty, payCurrency) }; });
+        const html = orderEmailHtmlMulti({ orderNo: orderNo, name: buyerName || '', address: shipTo, items: disp, amount: money(chargeAmount, payCurrency) });
+        emailed = await sendEmail(env, buyerEmail, 'Your Modulr order ' + orderNo, html);
+      } else {
+        const it = item || {};
+        const html = orderEmailHtml({
+          orderNo: orderNo, name: buyerName || '',
+          product: it.product || 'Modulr merch', size: it.size || '', address: it.address || '',
+          amount: money(chargeAmount, payCurrency)
+        });
+        emailed = await sendEmail(env, buyerEmail, 'Your Modulr order ' + orderNo, html);
+      }
     }
 
     if (buyerEmail && String(buyerEmail).indexOf('@') > 0 && ctx && ctx.waitUntil) {
